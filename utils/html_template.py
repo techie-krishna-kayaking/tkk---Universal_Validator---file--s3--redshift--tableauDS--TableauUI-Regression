@@ -36,7 +36,7 @@ def get_html_template() -> str:
         }
         
         .container {
-            max-width: 1400px;
+            max-width: 95%;
             margin: 0 auto;
             background: white;
             border-radius: 12px;
@@ -299,6 +299,39 @@ def get_html_template() -> str:
             font-size: 0.9em;
             color: #999;
         }
+
+        .qa-signoff {
+            margin: 0 30px 30px;
+            padding: 20px 24px;
+            background: #f0f4ff;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.92em;
+            line-height: 1.7;
+        }
+
+        .qa-signoff-title {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 1.2em;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .qa-signoff .qa-line {
+            color: #333;
+        }
+
+        .qa-signoff .qa-fail-reason {
+            color: #dc3545;
+            font-weight: 600;
+        }
+
+        .qa-signoff .qa-pass-msg {
+            color: #28a745;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -328,6 +361,12 @@ def get_html_template() -> str:
             </div>
         </div>
         
+        <!-- QA Sign-off Summary -->
+        <div class="qa-signoff">
+            <div class="qa-signoff-title">📋 QA Sign-off</div>
+            {{QA_SIGNOFF_SUMMARY}}
+        </div>
+
         <div class="content">
             <!-- Metadata Section -->
             <div class="section">
@@ -457,6 +496,8 @@ def get_html_template() -> str:
             $('#failedTable').DataTable({
                 pageLength: 25,
                 order: [[0, 'asc']],
+                scrollX: true,
+                autoWidth: true,
                 language: {
                     search: "Search failures:"
                 }
@@ -465,6 +506,8 @@ def get_html_template() -> str:
             $('#passedTable').DataTable({
                 pageLength: 25,
                 order: [[0, 'asc']],
+                scrollX: true,
+                autoWidth: true,
                 language: {
                     search: "Search passed:"
                 }
@@ -473,6 +516,8 @@ def get_html_template() -> str:
             $('#allTable').DataTable({
                 pageLength: 50,
                 order: [[0, 'asc']],
+                scrollX: true,
+                autoWidth: true,
                 language: {
                     search: "Search all:"
                 }
@@ -598,7 +643,7 @@ def get_consolidated_html_template() -> str:
     <style>
         * { margin:0; padding:0; box-sizing:border-box; }
         body { font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); padding:20px; min-height:100vh; }
-        .container { max-width:1400px; margin:0 auto; background:white; border-radius:12px; box-shadow:0 10px 40px rgba(0,0,0,0.2); overflow:hidden; }
+        .container { max-width:95%; margin:0 auto; background:white; border-radius:12px; box-shadow:0 10px 40px rgba(0,0,0,0.2); overflow:hidden; }
         .header { background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); color:white; padding:30px; text-align:center; }
         .header h1 { font-size:2.5em; margin-bottom:10px; text-shadow:2px 2px 4px rgba(0,0,0,0.3); }
         .header .subtitle { font-size:1.1em; opacity:0.9; }
@@ -644,6 +689,13 @@ def get_consolidated_html_template() -> str:
         .tab-btn:hover { background:#c8c8f0; }
         .tab-btn.active { background:#667eea; color:white; }
         .tab-content { display:none; }
+
+        /* QA Sign-off */
+        .qa-signoff { margin:20px 30px; padding:20px 24px; background:#f0f4ff; border:2px solid #667eea; border-radius:10px; font-family:'Courier New',Courier,monospace; font-size:0.92em; line-height:1.7; }
+        .qa-signoff-title { font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; font-size:1.2em; font-weight:700; color:#333; margin-bottom:10px; }
+        .qa-signoff .qa-line { color:#333; }
+        .qa-signoff .qa-fail-reason { color:#dc3545; font-weight:600; }
+        .qa-signoff .qa-pass-msg { color:#28a745; font-weight:600; }
     </style>
 </head>
 <body>

@@ -60,19 +60,19 @@ cp .env.example .env
 source venv/bin/activate
 
 # Data Validation
-python cli.py validate --config config/my_validation.yaml
-python cli.py validate --config config/my_validation.yaml --name "CSV to Redshift"
-python cli.py validate --config config/my_validation.yaml --debug
+python3 cli.py validate --config config/my_validation.yaml
+python3 cli.py validate --config config/my_validation.yaml --name "CSV to Redshift"
+python3 cli.py validate --config config/my_validation.yaml --debug
 
 # Tableau Regression Testing
-python cli.py regression --config bi_regression/configs/config.yaml
+python3 cli.py regression --config bi_regression/configs/config.yaml
 ```
 
 ### Direct Entry Points (also still work)
 
 ```bash
-python main.py --config config/my_validation.yaml                         # data validation
-python -m bi_regression.run --config bi_regression/configs/config.yaml    # regression
+python3 main.py --config config/my_validation.yaml                         # data validation
+python3 -m bi_regression.run --config bi_regression/configs/config.yaml    # regression
 ```
 
 ### Step 4: View Results

@@ -95,6 +95,9 @@ class Reporter:
         passed_rows = self._generate_table_rows(self.results_df[self.results_df['result'] == 'PASS'], include_pk=False)
         all_rows = self._generate_table_rows(self.results_df, include_status=True)
         
+        # Generate QA sign-off summary
+        qa_signoff_html = self._generate_qa_signoff(stats)
+
         # Replace placeholders
         html = template.replace('{{VALIDATION_NAME}}', self.validation_name)
         html = html.replace('{{TIMESTAMP}}', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
@@ -104,6 +107,7 @@ class Reporter:
         html = html.replace('{{FAIL_COUNT}}', str(stats['fail_count']))
         html = html.replace('{{TOTAL_COUNT}}', str(stats['total_count']))
         html = html.replace('{{METADATA_ITEMS}}', metadata_html)
+        html = html.replace('{{QA_SIGNOFF_SUMMARY}}', qa_signoff_html)
         html = html.replace('{{CHART_DATA}}', json.dumps(chart_data))
         html = html.replace('{{FAILED_ROWS}}', failed_rows)
         html = html.replace('{{PASSED_ROWS}}', passed_rows)
@@ -166,6 +170,47 @@ class Reporter:
         }
 
     
+    def _generate_qa_signoff(self, stats: Dict[str, Any]) -> str:
+        """Generate the QA Sign-off summary HTML block."""
+        src_type = self.source_metadata.get('source_type', 'Unknown')
+        src_path = self.source_metadata.get('source_path', 'Unknown')
+        src_rows = self.source_metadata.get('row_count', 'N/A')
+        src_cols = self.source_metadata.get('column_count', 'N/A')
+
+        tgt_type = self.target_metadata.get('source_type', 'Unknown')
+        tgt_path = self.target_metadata.get('source_path', 'Unknown')
+        tgt_rows = self.target_metadata.get('row_count', 'N/A')
+        tgt_cols = self.target_metadata.get('column_count', 'N/A')
+
+        lines = [
+            f'<div class="qa-line">Source Type: {src_type} | Source Path: {src_path} | '
+            f'Source Rows: {src_rows} | Source Columns: {src_cols}</div>',
+            f'<div class="qa-line">Target Type: {tgt_type} | Target Path: {tgt_path} | '
+            f'Target Rows: {tgt_rows} | Target Columns: {tgt_cols}</div>',
+            f'<div class="qa-line">Total Validations: {stats["total_count"]} | '
+            f'Pass: {stats["pass_count"]} | Fail: {stats["fail_count"]}</div>',
+        ]
+
+        # One-line failure reason
+        failed_df = self.results_df[self.results_df['result'] == 'FAIL']
+        if len(failed_df) > 0:
+            # Group failures by validation type and count
+            fail_summary = failed_df.groupby('validation').size()
+            parts = [f'{count} {vtype.replace("_", " ")}' for vtype, count in fail_summary.items()]
+            reason = f'Failures: {", ".join(parts)}'
+            # Add first concrete failure detail
+            first_fail = failed_df.iloc[0]
+            col_info = f' (e.g. column "{first_fail["column"]}")' if first_fail['column'] else ''
+            detail = first_fail['detail']
+            if len(detail) > 120:
+                detail = detail[:120] + '…'
+            reason += f'{col_info} — {detail}'
+            lines.append(f'<div class="qa-fail-reason">❌ {reason}</div>')
+        else:
+            lines.append('<div class="qa-pass-msg">✅ All validations passed — ready for sign-off.</div>')
+
+        return '\n            '.join(lines)
+
     def _generate_metadata_html(self) -> str:
         """Generate HTML for metadata section."""
         items = []
@@ -371,6 +416,7 @@ class ConsolidatedReporter:
             stats = reporter._calculate_statistics()
             chart_data = reporter._generate_chart_data()
             metadata_html = reporter._generate_metadata_html()
+            qa_signoff_html = reporter._generate_qa_signoff(stats)
             failed_rows = reporter._generate_table_rows(
                 reporter.results_df[reporter.results_df['result'] == 'FAIL'])
             passed_rows = reporter._generate_table_rows(
@@ -380,6 +426,10 @@ class ConsolidatedReporter:
             display = 'block' if idx == 0 else 'none'
             tab_contents.append(f'''
             <div class="tab-content" id="tab-{idx}" style="display:{display}">
+                <div class="qa-signoff">
+                    <div class="qa-signoff-title">\U0001f4cb QA Sign-off</div>
+                    {qa_signoff_html}
+                </div>
                 <div class="summary-cards">
                     <div class="card {stats['overall_status_class']}">
                         <div class="card-title">Overall Status</div>
