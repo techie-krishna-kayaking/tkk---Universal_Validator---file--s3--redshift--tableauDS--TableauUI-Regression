@@ -38,47 +38,43 @@
 
 ---
 
-## � Quick Start
+## 🚀 Quick Start
 
-### Step 1: Setup (One-time)
-
-```bash
-cd universal-validator
-./setup.sh            # creates venv, installs all dependencies
-```
-
-### Step 2: Configure (if using Redshift)
+### 1. Navigate to the project directory
 
 ```bash
-cp .env.example .env
-# Edit .env with your Redshift credentials
+cd 1IB_universal-validator
 ```
 
-### Step 3: Activate & Run
+### 2. Install requirements
+
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Run setup
+
+```bash
+./setup.sh
+```
+
+### 4. Activate the virtual environment
 
 ```bash
 source venv/bin/activate
+```
 
+### 5. Run
+
+```bash
 # Data Validation
+python3 main.py --config config/my_validation.yaml
+
+# Or via CLI
 python3 cli.py validate --config config/my_validation.yaml
-python3 cli.py validate --config config/my_validation.yaml --name "CSV to Redshift"
-python3 cli.py validate --config config/my_validation.yaml --debug
 
 # Tableau Regression Testing
 python3 cli.py regression --config bi_regression/configs/config.yaml
-```
-
-### Direct Entry Points (also still work)
-
-```bash
-python3 main.py --config config/my_validation.yaml                         # data validation
-python3 -m bi_regression.run --config bi_regression/configs/config.yaml    # regression
-```
-
-### Step 4: View Results
-
-```bash
-open results/my_first_validation_*.html   # Interactive HTML report
 ```
 
 ```

@@ -1,14 +1,38 @@
 
 validations:
-  - name: "SF Profile Validation"
+  - name: "Clari Entries Validation"
     source:
       type: file
-      path: ./data/SF_profile.csv
+      path: ./raw_data/clari/clari_entries-a56e2625d54740969625257617a90786.csv
     target:
       type: table
       environment: PREPROD
       schema: edw_asis
-      table: salesforce_profile
-    primary_keys: id
-    output_dir: ./results/sf_profile_validation
+      table: clari_entries
+    primary_keys: timeframeid, timeperiodid, fieldid, userid, report_name
+    output_dir: ./results/clari_validation
+
+  - name: "Clari Fields Validation"
+    source:
+      type: file
+      path: ./raw_data/clari/clari_fields-b5f2f4068f6c4dd28d031de36016d5ae.csv
+    target:
+      type: table
+      environment: PREPROD
+      schema: edw_asis
+      table: clari_fields
+    primary_keys: fieldname, fieldid, report_name
+    output_dir: ./results/clari_validation
+
+  - name: "Clari Users Validation"
+    source:
+      type: file
+      path: ./raw_data/clari/clari_users-4c4ae92a219e447199386de26724cf44.csv
+    target:
+      type: table
+      environment: PREPROD
+      schema: edw_asis
+      table: clari_users
+    primary_keys: userid, report_name
+    output_dir: ./results/clari_validation
 

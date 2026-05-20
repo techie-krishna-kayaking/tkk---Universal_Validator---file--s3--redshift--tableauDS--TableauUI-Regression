@@ -1,0 +1,41 @@
+validation,result,column,pk,detail,source_value,target_value
+record_count_check,FAIL,,,"Source: 11095 rows, Target: 11106 rows (Note: Smart sub-setting applied - records filtered to matching PKs)",11095,11106
+column_count_check,PASS,,,"Source: 13 columns, Target: 23 columns, Common: 13 | Target-only: ['edw_act_flg', 'edw_create_dtm', 'edw_create_user', 'edw_data_quality_flg', 'edw_end_dtm', 'edw_start_dtm', 'edw_update_dtm', 'edw_update_user', 'row_id', 'ss_cd']",13,23
+metadata_type_check,PASS,aggregationclosed,,"Compatible types: Source 'object', Target 'object'",object,object
+metadata_type_check,PASS,currency_code,,"Compatible types: Source 'object', Target 'object'",object,object
+metadata_type_check,PASS,currency_symbol,,"Compatible types: Source 'object', Target 'object'",object,object
+metadata_type_check,PASS,fieldid,,"Compatible types: Source 'object', Target 'object'",object,object
+metadata_type_check,PASS,forecastvalue,,"Compatible types: Source 'object', Target 'object'",object,object
+metadata_type_check,PASS,isupdated,,"Compatible types: Source 'object', Target 'object'",object,object
+metadata_type_check,PASS,quotavalue,,"Compatible types: Source 'object', Target 'object'",object,object
+metadata_type_check,PASS,report_name,,"Compatible types: Source 'object', Target 'object'",object,object
+metadata_type_check,PASS,timeframeid,,"Compatible types: Source 'object', Target 'object'",object,object
+metadata_type_check,PASS,timeperiodid,,"Compatible types: Source 'object', Target 'object'",object,object
+metadata_type_check,PASS,updatedby,,"Compatible types: Source 'object', Target 'object'",object,object
+metadata_type_check,PASS,updatedon,,"Compatible types: Source 'object', Target 'object'",object,object
+metadata_type_check,PASS,userid,,"Compatible types: Source 'object', Target 'object'",object,object
+duplicate_check,PASS,,,No duplicates found in Source,0,
+duplicate_check,FAIL,,"timeframeid='TF:2026-05-06', timeperiodid='2026_Q4', fieldid='fc_commit', userid='459098:0MI1M000000TNPaWAO', report_name='total_bookings_acv'",Target has 2 duplicate rows (showing first 5 of 22),,2
+duplicate_check,FAIL,,"timeframeid='TF:2026-05-06', timeperiodid='2026_Q4', fieldid='fc_commit', userid='536125:0MI8Y000000GpLVWA0', report_name='total_bookings_acv'",Target has 2 duplicate rows (showing first 5 of 22),,2
+duplicate_check,FAIL,,"timeframeid='TF:2026-05-06', timeperiodid='2026_Q4', fieldid='fc_renewal_bookings_commit', userid='308585:0MI8Y000000GpLIWA0', report_name='total_bookings_acv'",Target has 2 duplicate rows (showing first 5 of 22),,2
+duplicate_check,FAIL,,"timeframeid='TF:2026-05-06', timeperiodid='2026_Q4', fieldid='fc_commit', userid='553688:0MI1M000000TNOpWAO', report_name='total_bookings_acv'",Target has 2 duplicate rows (showing first 5 of 22),,2
+duplicate_check,FAIL,,"timeframeid='TF:2026-05-06', timeperiodid='2026_Q4', fieldid='fc_new_bookings_commit', userid='563320:0MI1M000000TNT8WAO', report_name='total_bookings_acv'",Target has 2 duplicate rows (showing first 5 of 22),,2
+null_check,FAIL,aggregationclosed,,"Source: 11095 nulls, Target: 11106 nulls",11095,11106
+null_check,FAIL,forecastvalue,,"Source: 6748 nulls, Target: 6749 nulls",6748,6749
+null_check,FAIL,isupdated,,"Source: 11095 nulls, Target: 11106 nulls",11095,11106
+null_check,FAIL,quotavalue,,"Source: 8435 nulls, Target: 8446 nulls",8435,8446
+null_check,FAIL,updatedby,,"Source: 6748 nulls, Target: 6749 nulls",6748,6749
+null_check,FAIL,updatedon,,"Source: 6748 nulls, Target: 6749 nulls",6748,6749
+empty_string_check,PASS,,,No empty strings found,,
+primary_key_match,PASS,,,"Common: 11095, Source-only: 0, Target-only: 0",11095,11095
+data_validation,FAIL,forecastvalue,,3 mismatches in column forecastvalue,,
+data_validation,FAIL,forecastvalue,"timeframeid='TF:2026-05-06', timeperiodid='2026_Q4', fieldid='fc_commit', userid='563320:0MI1M000000TNT8WAO', report_name='total_bookings_acv'",Value mismatch (example 1 of 3),'289991.0','227335.0'
+data_validation,FAIL,forecastvalue,"timeframeid='TF:2026-05-06', timeperiodid='2026_Q4', fieldid='fc_commit', userid='536125:0MI8Y000000GpLVWA0', report_name='total_bookings_acv'",Value mismatch (example 2 of 3),'537267.0','520266.68'
+data_validation,FAIL,forecastvalue,"timeframeid='TF:2026-05-06', timeperiodid='2026_Q4', fieldid='fc_new_bookings_commit', userid='553688:0MI1M000000TNOpWAO', report_name='total_bookings_acv'",Value mismatch (example 3 of 3),'65000000.0',None
+data_validation,FAIL,updatedby,,2 mismatches in column updatedby,,
+data_validation,FAIL,updatedby,"timeframeid='TF:2026-05-06', timeperiodid='2026_Q4', fieldid='fc_commit', userid='536125:0MI8Y000000GpLVWA0', report_name='total_bookings_acv'",Value mismatch (example 1 of 2),'005R700000Fhhh1IAB','005R700000DBkzJIAT'
+data_validation,FAIL,updatedby,"timeframeid='TF:2026-05-06', timeperiodid='2026_Q4', fieldid='fc_new_bookings_commit', userid='553688:0MI1M000000TNOpWAO', report_name='total_bookings_acv'",Value mismatch (example 2 of 2),'005R7000001jQ2bIAE',None
+data_validation,FAIL,updatedon,,5 mismatches in column updatedon,,
+data_validation,FAIL,updatedon,"timeframeid='TF:2026-05-06', timeperiodid='2026_Q4', fieldid='fc_commit', userid='459098:0MI1M000000TNPaWAO', report_name='total_bookings_acv'",Value mismatch (example 1 of 5),'1778612836243.0','1778571441871.0'
+data_validation,FAIL,updatedon,"timeframeid='TF:2026-05-06', timeperiodid='2026_Q4', fieldid='fc_new_bookings_commit', userid='459098:0MI1M000000TNPaWAO', report_name='total_bookings_acv'",Value mismatch (example 2 of 5),'1778612836243.0','1778571441871.0'
+data_validation,FAIL,updatedon,"timeframeid='TF:2026-05-06', timeperiodid='2026_Q4', fieldid='fc_commit', userid='563320:0MI1M000000TNT8WAO', report_name='total_bookings_acv'",Value mismatch (example 3 of 5),'1778652478125.0','1778547823912.0'
