@@ -19,6 +19,7 @@ validations:
 
   # ── 1. File → Redshift Table (ETL pipeline validation) ──────────────────
   - name: "CSV to Redshift Table"
+    regression: false 
     source:
       type: file
       path: ./data/SF_profile.csv
