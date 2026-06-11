@@ -181,26 +181,26 @@ class MetadataValidator:
         
         return self.results
 
-        def _generate_html_report(self, html_file: Path):
-                """Generate a single sortable HTML table report."""
-                columns = [
-                        'name', 'csv_file', 'csv_rows', 'csv_cols',
-                        'table', 'table_rows', 'table_cols',
-                        'rows_match', 'cols_match', 'status'
-                ]
+    def _generate_html_report(self, html_file: Path):
+        """Generate a single sortable HTML table report."""
+        columns = [
+            'name', 'csv_file', 'csv_rows', 'csv_cols',
+            'table', 'table_rows', 'table_cols',
+            'rows_match', 'cols_match', 'status'
+        ]
 
-                rows_html = []
-                for row in self.results:
-                        cells = ''.join(f"<td>{html.escape(str(row.get(col, '')))}</td>" for col in columns)
-                        rows_html.append(f"<tr>{cells}</tr>")
+        rows_html = []
+        for row in self.results:
+            cells = ''.join(f"<td>{html.escape(str(row.get(col, '')))}</td>" for col in columns)
+            rows_html.append(f"<tr>{cells}</tr>")
 
-                table_rows = '\n'.join(rows_html)
-                headers = ''.join(
-                        f'<th onclick="sortTable({idx})">{html.escape(col)}</th>'
-                        for idx, col in enumerate(columns)
-                )
+        table_rows = '\n'.join(rows_html)
+        headers = ''.join(
+            f'<th onclick="sortTable({idx})">{html.escape(col)}</th>'
+            for idx, col in enumerate(columns)
+        )
 
-                html_content = f"""<!doctype html>
+        html_content = f"""<!doctype html>
 <html lang=\"en\">
 <head>
     <meta charset=\"utf-8\" />
@@ -259,7 +259,7 @@ class MetadataValidator:
 </html>
 """
 
-                html_file.write_text(html_content, encoding='utf-8')
+        html_file.write_text(html_content, encoding='utf-8')
 
     def generate_report(self, output_dir: str = './results/metadata_validation'):
         """Generate one consolidated CSV and one sortable HTML report."""
