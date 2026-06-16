@@ -423,6 +423,29 @@ python cli.py regression --config bi_regression/configs/config.yaml
 
 See `bi_regression/configs/exampleConfig.yaml` for config examples.
 
+Comparison mode validates all dashboard pages (tabs), not just the landing page.
+It also supports workbook listing URLs (`.../workbooks/<id>`) and will:
+- discover listed views from both workbooks,
+- compare view names and sequence,
+- run visual regression for each matched view,
+- report missing/deprecated/misaligned views with screenshot artifacts in HTML output.
+
+```yaml
+comparison:
+  - dashboard_url_1: "https://.../views/SalesToolsUtilizationDashboard/SalesToolsSummary"
+    dashboard_url_2: "https://.../views/SalesToolsUtilizationDashboard-UATV1_1/SalesToolsSummary"
+    label_1: "Prod"
+    label_2: "UAT"
+    ssim_threshold: 0.98
+    include_all_pages: true
+    enforce_page_sequence: true
+    deprecated_pages: ["Legacy Page"]   # Optional hints for deprecated pages (auto-detection also enabled)
+```
+
+If page names or sequence do not match, comparison mode raises a mismatch defect.
+  Deprecated/missing pages are auto-detected even when `deprecated_pages` is empty, and are included in screenshot artifacts and HTML results.
+  When `deprecated_pages` is provided, it is used as a hint label in defect reasons; matching pages are still fully compared (visual/data rendering differences are still detected).
+
 ---
 
 ## 📋 Dependencies

@@ -130,21 +130,33 @@ class TabNavigator:
         map_a = {t.name.lower(): t for t in tabs_a}
         map_b = {t.name.lower(): t for t in tabs_b}
 
-        all_names = sorted(set(map_a) | set(map_b))
         pairs = []
-        for name in all_names:
-            a = map_a.get(name)
-            b = map_b.get(name)
-            if a is None:
-                # Present in B only
-                missing = TabInfo(name=map_b[name].name, index=-1, exists=False,
-                                  reason=f"Missing in {label_a}")
-                pairs.append((missing, map_b[name]))
-            elif b is None:
-                # Present in A only
-                missing = TabInfo(name=map_a[name].name, index=-1, exists=False,
-                                  reason=f"Missing in {label_b}")
-                pairs.append((map_a[name], missing))
+
+        # Preserve dashboard A ordering so traversal follows the primary sequence.
+        for tab_a in tabs_a:
+            key = tab_a.name.lower()
+            tab_b = map_b.get(key)
+            if tab_b is None:
+                missing = TabInfo(
+                    name=tab_a.name,
+                    index=-1,
+                    exists=False,
+                    reason=f"Missing in {label_b}",
+                )
+                pairs.append((tab_a, missing))
             else:
-                pairs.append((a, b))
+                pairs.append((tab_a, tab_b))
+
+        # Add dashboard B tabs that do not exist in A.
+        for tab_b in tabs_b:
+            key = tab_b.name.lower()
+            if key not in map_a:
+                missing = TabInfo(
+                    name=tab_b.name,
+                    index=-1,
+                    exists=False,
+                    reason=f"Missing in {label_a}",
+                )
+                pairs.append((missing, tab_b))
+
         return pairs

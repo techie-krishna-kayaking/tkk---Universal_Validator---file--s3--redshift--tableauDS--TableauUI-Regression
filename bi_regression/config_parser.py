@@ -45,6 +45,9 @@ class ComparisonConfig(BaseModel):
     label_1: str = "Dashboard 1"
     label_2: str = "Dashboard 2"
     ssim_threshold: float = 0.98
+    include_all_pages: bool = True
+    enforce_page_sequence: bool = True
+    deprecated_pages: Optional[List[str]] = None
     filter_scenarios: Optional[List[FilterScenario]] = None
 
 
@@ -85,7 +88,7 @@ class BrowserConfig(BaseModel):
 
 
 class OutputConfig(BaseModel):
-    base_dir: str = "test_results"
+    base_dir: str = "results"
 
 
 class TestConfig(BaseModel):

@@ -2,8 +2,14 @@
 # COMPARISON MODE — Two-dashboard diff (List format)
 # ------------------------------------------------------------
 comparison:
-  - dashboard_url_1: "https://prod-useast-b.online.tableau.com/#/site/infoblox/views/SalesToolsUtilizationDashboard/SalesToolsSummary"
-    dashboard_url_2: "https://prod-useast-b.online.tableau.com/#/site/infoblox/views/SalesToolsUtilizationDashboard-UATV1_1/SalesToolsSummary"
+  - dashboard_url_1: "https://prod-useast-b.online.tableau.com/#/site/infoblox/workbooks/1413596"
+    dashboard_url_2: "https://prod-useast-b.online.tableau.com/#/site/infoblox/workbooks/4160196"
     label_1: "Prod"
     label_2: "UAT"
     ssim_threshold: 0.98
+    include_all_pages: true
+    enforce_page_sequence: true
+    deprecated_pages: []  # Optional hints; deprecated/missing pages are still reported in screenshots + HTML
+
+output:
+  base_dir: "results"

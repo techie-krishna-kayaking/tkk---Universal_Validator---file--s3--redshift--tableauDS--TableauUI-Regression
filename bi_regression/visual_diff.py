@@ -26,6 +26,7 @@ class DiffResult:
     label_a: str = "Baseline"
     label_b: str = "Target"
     scenario_label: str = ""  # Filter scenario label (empty = no filters)
+    reason: str = ""
 
 
 def compare_images(
