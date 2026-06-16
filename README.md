@@ -568,6 +568,20 @@ target:
     - annual_revenue
 ```
 
+### Row Filtering (Active Data Only)
+
+```yaml
+target:
+  type: table
+  environment: PREPROD
+  schema: edw_asis
+  table: salesforce_vartopiadrs__registration__c
+  where_clause: "edw_act_fl = 'Y'"      # Optional row filter applied in SQL
+
+# Alias also supported:
+# where: "edw_act_fl = 'Y'"
+```
+
 ### All 24 Scenarios at a Glance
 
 | # | Scenario | Source | Target | Key Feature | Data Validation |
@@ -577,7 +591,7 @@ target:
 | 3 | CSV → Parquet | file | file | Format migration | ✅ Standard |
 | 4 | TWBX → TWBX | datasource | datasource | Pre/post-RCA | ✅ Full (embedded data) |
 | 5 | TWBX → Redshift | datasource | table | Dashboard accuracy | ✅ Full (embedded data) |
-| 6 | DEV → PREPROD | table | table | Migration validation | ✅ Standard |
+| 6 | DEV → PREPROD | table | table | Migration validation + active filter | ✅ Standard |
 | 7 | PREPROD → PROD | table | table | Pre-deploy check | ✅ Standard |
 | 8 | DEV → DEV_REVOPS | table | table | Same cluster, different users | ✅ Standard |
 | 9 | CSV → PROD | file | table | Production upload | ✅ Standard |
@@ -629,6 +643,13 @@ source:
   environment: DEV        # Just reference by name!
   schema: edw_asis
   table: my_table
+
+target:
+  type: table
+  environment: PREPROD
+  schema: edw_asis
+  table: my_table
+  where_clause: "edw_act_fl = 'Y'"   # Optional table-level row filter
 ```
 
 > **Tip:** Legacy `REDSHIFT_HOST` / `REDSHIFT_DB` variables are still supported for backward compatibility.

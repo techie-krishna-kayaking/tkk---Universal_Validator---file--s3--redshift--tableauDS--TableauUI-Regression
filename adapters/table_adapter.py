@@ -50,6 +50,7 @@ class TableAdapter(BaseAdapter):
                 
                 Common:
                 - columns: List of specific columns to load (optional, loads all if not specified)
+                - where_clause: Optional SQL predicate to filter rows (without or with leading WHERE)
         """
         super().__init__(config)
         
@@ -96,6 +97,7 @@ class TableAdapter(BaseAdapter):
         # Table parameters
         self.table = config['table']
         self.columns = config.get('columns', None)
+        self.where_clause = self._normalize_where_clause(config.get('where_clause', config.get('where')))
         self.limit = config.get('limit', config.get('row_limit', None))
 
         if self.limit is not None:
@@ -126,6 +128,21 @@ class TableAdapter(BaseAdapter):
             password=self.password,
             port=self.port
         )
+
+    @staticmethod
+    def _normalize_where_clause(where_clause: Optional[str]) -> Optional[str]:
+        """Normalize optional where clause and remove leading WHERE if provided."""
+        if where_clause is None:
+            return None
+
+        normalized = str(where_clause).strip()
+        if not normalized:
+            return None
+
+        if normalized.lower().startswith('where '):
+            normalized = normalized[6:].strip()
+
+        return normalized or None
     
     def _get_table_columns(self, conn) -> List[str]:
         """
@@ -196,15 +213,31 @@ class TableAdapter(BaseAdapter):
             # Build SQL query
             cols_sql = ", ".join([f'"{c}"' for c in select_cols])
             sql = f'SELECT {cols_sql} FROM "{self.schema}"."{self.table}"'
-            
+            where_parts: List[str] = []
+
+            # Add static filter from config if provided
+            if self.where_clause:
+                where_parts.append(f"({self.where_clause})")
+
             # Add WHERE clause for PK filtering if provided
             if pk_columns and pk_values:
-                where_clause = self._build_pk_where_clause(pk_columns, pk_values)
-                if where_clause:
-                    sql += f' WHERE {where_clause}'
-                    logger.info(f"Loading table: {self.schema}.{self.table} ({len(select_cols)} columns) with PK filter ({len(pk_values)} rows)")
-                else:
-                    logger.info(f"Loading table: {self.schema}.{self.table} ({len(select_cols)} columns)")
+                pk_where_clause = self._build_pk_where_clause(pk_columns, pk_values)
+                if pk_where_clause:
+                    where_parts.append(f"({pk_where_clause})")
+
+            if where_parts:
+                sql += f" WHERE {' AND '.join(where_parts)}"
+
+            filters_applied = []
+            if self.where_clause:
+                filters_applied.append("where_clause")
+            if pk_columns and pk_values and len(where_parts) > (1 if self.where_clause else 0):
+                filters_applied.append(f"PK filter ({len(pk_values)} rows)")
+
+            if filters_applied:
+                logger.info(
+                    f"Loading table: {self.schema}.{self.table} ({len(select_cols)} columns) with {' + '.join(filters_applied)}"
+                )
             else:
                 logger.info(f"Loading table: {self.schema}.{self.table} ({len(select_cols)} columns)")
 
@@ -312,6 +345,7 @@ class TableAdapter(BaseAdapter):
             'database': self.database,
             'schema': self.schema,
             'table': self.table,
+            'where_clause': self.where_clause,
             'source_path': f"{self.schema}.{self.table}",
             'row_count': len(self._data),
             'column_count': len(self._data.columns),

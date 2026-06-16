@@ -92,18 +92,20 @@ validations:
 #   DEV_REVOPS_JDBC_URL, DEV_REVOPS_USER, DEV_REVOPS_PASSWORD
 # ────────────────────────────────────────────────────────────────────────────
 
-  # ── 6. DEV → PREPROD (migration validation) ────────────────────────────
-  - name: "DEV to PREPROD Migration"
+  # ── 6. DEV → PREPROD (migration validation, active rows only) ─────────
+  - name: "DEV to PREPROD Migration (Active Only)"
     source:
       type: table
       environment: DEV
       schema: staging
       table: customers
+      where_clause: "edw_act_fl = 'Y'"
     target:
       type: table
       environment: PREPROD
       schema: staging
       table: customers
+      where_clause: "edw_act_fl = 'Y'"
     primary_keys: customer_id
     output_dir: ./results
 
