@@ -286,6 +286,13 @@ class ComparisonRunner:
         () => {
           const out = [];
           const seen = new Set();
+
+                    // Accept only real workbook-view destinations.
+                    const isWorkbookViewUrl = (href) => {
+                        if (!href) return false;
+                        const u = String(href).toLowerCase();
+                        return u.includes('/redirect_to_view/') || u.includes('/views/');
+                    };
           
           // Strategy 1: Standard links with /views/ in href
           let candidates = Array.from(document.querySelectorAll('a[href*="/views/"]'));
@@ -294,6 +301,7 @@ class ComparisonRunner:
             const name = (el.textContent || '').trim();
             if (!name || name.length < 2) continue;
             const href = el.getAttribute('href') || el.href;
+                        if (!isWorkbookViewUrl(href)) continue;
             if (!href) continue;
             const key = name.toLowerCase();
             if (seen.has(key)) continue;
@@ -331,6 +339,7 @@ class ComparisonRunner:
               if (match) href = match[1];
             }
             
+                        if (!isWorkbookViewUrl(href)) continue;
             if (!href) continue;
             
             const key = name.toLowerCase();
@@ -361,7 +370,7 @@ class ComparisonRunner:
               if (match) href = match[1];
             }
             
-            if (href) {
+                        if (href && isWorkbookViewUrl(href)) {
               filtered.push({ name, href, el });
             }
           }
