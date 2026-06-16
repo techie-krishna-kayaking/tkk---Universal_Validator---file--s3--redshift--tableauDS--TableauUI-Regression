@@ -12,4 +12,4 @@ comparison:
     deprecated_pages: []  # Optional hints; deprecated/missing pages are still reported in screenshots + HTML
 
 output:
-  base_dir: "results"
+  base_dir: "bi_regression/results/computron"
