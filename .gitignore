@@ -26,6 +26,7 @@ results/*.csv
 results/*.html
 results/*.json
 results/*.xlsx
+results/archive/
 
 # Test data
 tests/data/*

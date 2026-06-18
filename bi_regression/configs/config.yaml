@@ -1,7 +1,18 @@
 # ------------------------------------------------------------
 # COMPARISON MODE — Two-dashboard diff (List format)
 # ------------------------------------------------------------
+# Test type (auto-detected, but can be explicit)
+test_type: comparison
+
+# Browser configuration (optional - uses defaults if omitted)
+browser:
+  headless: false
+  render_wait_seconds: 6
+  page_load_timeout: 90000
+
+# List of dashboard pair comparisons
 comparison:
+  # Pair 1 - ARR - Late Conver
   - dashboard_url_1: "https://prod-useast-b.online.tableau.com/#/site/infoblox/workbooks/1413596"
     dashboard_url_2: "https://prod-useast-b.online.tableau.com/#/site/infoblox/workbooks/4160196"
     label_1: "Prod"
@@ -9,7 +20,117 @@ comparison:
     ssim_threshold: 0.98
     include_all_pages: true
     enforce_page_sequence: true
-    deprecated_pages: []  # Optional hints; deprecated/missing pages are still reported in screenshots + HTML
+    deprecated_pages: []
 
+  # Pair 2 - ARR metrics
+  - dashboard_url_1: "https://prod-useast-b.online.tableau.com/#/site/infoblox/workbooks/4170218"
+    dashboard_url_2: "https://prod-useast-b.online.tableau.com/#/site/infoblox/workbooks/3219459"
+    label_1: "Prod"
+    label_2: "UAT"
+    ssim_threshold: 0.98
+    include_all_pages: true
+    enforce_page_sequence: true
+
+  # Pair 3 - Daily ARR
+  - dashboard_url_1: "https://prod-useast-b.online.tableau.com/#/site/infoblox/workbooks/41707021"
+    dashboard_url_2: "https://prod-useast-b.online.tableau.com/#/site/infoblox/workbooks/3613834"
+    label_1: "Prod"
+    label_2: "UAT"
+    ssim_threshold: 0.98
+    include_all_pages: true
+    enforce_page_sequence: true
+
+  # Pair 4 - Finance winloss
+  - dashboard_url_1: https://prod-useast-b.online.tableau.com/#/site/infoblox/workbooks/4171369
+    dashboard_url_2: "https://prod-useast-b.online.tableau.com/#/site/infoblox/workbooks/4117292"
+    label_1: "Prod"
+    label_2: "UAT"
+    ssim_threshold: 0.98
+    include_all_pages: true
+    enforce_page_sequence: true
+
+  # Pair 5 - renewal rate net renewal
+  - dashboard_url_1: "https://prod-useast-b.online.tableau.com/#/site/infoblox/workbooks/4201040"
+    dashboard_url_2: "https://prod-useast-b.online.tableau.com/#/site/infoblox/workbooks/1417346"
+    label_1: "Prod"
+    label_2: "UAT"
+    ssim_threshold: 0.98
+    include_all_pages: true
+    enforce_page_sequence: true
+
+  # Pair 6 - renewal rate order n acv
+  - dashboard_url_1: "https://prod-useast-b.online.tableau.com/#/site/infoblox/workbooks/4201050"
+    dashboard_url_2: "https://prod-useast-b.online.tableau.com/#/site/infoblox/workbooks/3605291"
+    label_1: "Prod"
+    label_2: "UAT"
+    ssim_threshold: 0.98
+    include_all_pages: true
+    enforce_page_sequence: true
+
+  # Pair 7 - renewal sales view 
+  - dashboard_url_1: "https://prod-useast-b.online.tableau.com/#/site/infoblox/workbooks/4207127"
+    dashboard_url_2: "https://prod-useast-b.online.tableau.com/#/site/infoblox/workbooks/1405589"
+    label_1: "Prod"
+    label_2: "UAT"
+    ssim_threshold: 0.98
+    include_all_pages: true
+    enforce_page_sequence: true
+
+  # Pair 8 - renewal kickoff
+  - dashboard_url_1: "https://prod-useast-b.online.tableau.com/#/site/infoblox/workbooks/4207127"
+    dashboard_url_2: "https://prod-useast-b.online.tableau.com/#/site/infoblox/workbooks/1435186"
+    label_1: "Prod"
+    label_2: "UAT"
+    ssim_threshold: 0.98
+    include_all_pages: true
+    enforce_page_sequence: true
+
+  # Pair 9 - renewal walkthrouhg rls
+  - dashboard_url_1: "https://prod-useast-b.online.tableau.com/#/site/infoblox/workbooks/4164866"
+    dashboard_url_2: "https://prod-useast-b.online.tableau.com/#/site/infoblox/workbooks/1494706"
+    label_1: "Prod"
+    label_2: "UAT"
+    ssim_threshold: 0.98
+    include_all_pages: true
+    enforce_page_sequence: true
+
+  # Pair 10 - renwal kickoff walk 
+  - dashboard_url_1: "https://prod-useast-b.online.tableau.com/#/site/infoblox/workbooks/4164863"
+    dashboard_url_2: "https://prod-useast-b.online.tableau.com/#/site/infoblox/workbooks/1435207"
+    label_1: "Prod"
+    label_2: "UAT"
+    ssim_threshold: 0.98
+    include_all_pages: true
+    enforce_page_sequence: true
+
+  # Pair 11 - saas arr metrics lrp
+  - dashboard_url_1: "https://prod-useast-b.online.tableau.com/#/site/infoblox/workbooks/4171213"
+    dashboard_url_2: "https://prod-useast-b.online.tableau.com/#/site/infoblox/workbooks/1414065"
+    label_1: "Prod"
+    label_2: "UAT"
+    ssim_threshold: 0.98
+    include_all_pages: true
+    enforce_page_sequence: true
+
+  # Pair 12 - saas arr metrics day break
+  - dashboard_url_1: "https://prod-useast-b.online.tableau.com/#/site/infoblox/workbooks/4169875"
+    dashboard_url_2: "https://prod-useast-b.online.tableau.com/#/site/infoblox/workbooks/1534557"
+    label_1: "Prod"
+    label_2: "UAT"
+    ssim_threshold: 0.98
+    include_all_pages: true
+    enforce_page_sequence: true
+
+  # Pair 13 - saas arr metrics
+  - dashboard_url_1: "https://prod-useast-b.online.tableau.com/#/site/infoblox/workbooks/4160425" 
+    dashboard_url_2: "https://prod-useast-b.online.tableau.com/#/site/infoblox/workbooks/1414967"
+    label_1: "Prod"
+    label_2: "UAT"
+    ssim_threshold: 0.98
+    include_all_pages: true
+    enforce_page_sequence: true
+
+
+# Output configuration
 output:
   base_dir: "bi_regression/results/computron"
