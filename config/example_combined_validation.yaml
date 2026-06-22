@@ -1,0 +1,90 @@
+# Example 3: Combined Great Expectations + Anomaly Detection
+#
+# This example shows:
+# - Both Great Expectations and Anomaly Detection working together
+# - File to Redshift validation
+# - Comprehensive quality rule enforcement
+# - Outlier detection on numeric columns
+# - Full regression-mode checks
+
+validations:
+  - name: "Comprehensive Order Validation"
+    regression: true
+    
+    source:
+      type: file
+      path: ./data/orders.parquet
+      format: parquet
+    
+    target:
+      type: table
+      environment: DEV
+      schema: edw_asis
+      table: orders
+    
+    primary_keys: "order_id"
+    output_dir: ./results/orders
+    
+    # Standard structural checks always run (7 checks)
+    # + Regression checks (16 total)
+    
+    # ---- Great Expectations: Quality Rules ----
+    great_expectations:
+      enabled: true
+      run_on: both
+      expectations:
+        # Required columns
+        - type: expect_column_to_exist
+          column: order_id
+        - type: expect_column_to_exist
+          column: customer_id
+        - type: expect_column_to_exist
+          column: order_date
+        - type: expect_column_to_exist
+          column: total_amount
+        - type: expect_column_to_exist
+          column: status
+        
+        # NOT NULL for critical fields
+        - type: expect_column_values_to_not_be_null
+          column: order_id
+        - type: expect_column_values_to_not_be_null
+          column: customer_id
+        - type: expect_column_values_to_not_be_null
+          column: total_amount
+        
+        # Primary key uniqueness
+        - type: expect_column_values_to_be_unique
+          column: order_id
+        
+        # Valid status values
+        - type: expect_column_values_to_be_in_set
+          column: status
+          value_set: ["pending", "processing", "shipped", "delivered", "cancelled", "returned"]
+        
+        # Amount validation (no negative orders)
+        - type: expect_column_values_to_be_between
+          column: total_amount
+          min_value: 0
+          max_value: 999999.99
+        
+        # Discount percentage validation
+        - type: expect_column_values_to_be_between
+          column: discount_pct
+          min_value: 0
+          max_value: 100
+    
+    # ---- Anomaly Detection: Find unusual orders ----
+    anomaly_detection:
+      enabled: true
+      run_on: both
+      method: isolation_forest
+      columns:
+        - total_amount
+        - quantity
+        - discount_pct
+        - shipping_cost
+      contamination: 0.03       # ~3% anomalies expected
+      random_state: 42
+      max_samples: auto
+      sample_output_rows: 25

@@ -12,6 +12,8 @@ from collections import defaultdict
 from adapters import FileAdapter, TableAdapter, DataSourceAdapter, BaseAdapter
 from core.comparator import Comparator
 from core.reporter import Reporter, ConsolidatedReporter
+from core.gx_validator import run_great_expectations
+from core.anomaly_detector import run_anomaly_detection
 from utils.helpers import parse_primary_keys, resolve_path
 
 logger = logging.getLogger(__name__)
@@ -47,6 +49,8 @@ class Validator:
             str(src).lower(): str(tgt).lower()
             for src, tgt in (config.get('column_mapping', {}) or {}).items()
         }
+        from core.gx_validator import run_great_expectations
+        from core.anomaly_detector import run_anomaly_detection
         self.auto_match_by_suffix = bool(config.get('auto_match_by_suffix', False))
         self.source_prefixes_to_strip = [
             str(p).lower() for p in (config.get('source_prefixes_to_strip', []) or []) if str(p).strip()

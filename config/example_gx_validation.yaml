@@ -1,0 +1,75 @@
+# Example 1: CSV to Redshift with Great Expectations validation
+#
+# This example shows:
+# - Loading a CSV file
+# - Comparing to a Redshift table
+# - Running rule-based quality checks via Great Expectations
+# - Generating comprehensive reports
+
+validations:
+  - name: "Customer Validation with Great Expectations"
+    regression: false
+    
+    source:
+      type: file
+      path: ./data/customers.csv
+      format: csv
+      sep: ','
+      encoding: 'utf-8'
+    
+    target:
+      type: table
+      environment: DEV
+      schema: edw_asis
+      table: customers
+    
+    primary_keys: "customer_id"
+    output_dir: ./results/customers
+    
+    # ---- Great Expectations: Rule-based validation ----
+    great_expectations:
+      enabled: true
+      run_on: both              # source | target | both
+      expectations:
+        # Column existence and type checks
+        - type: expect_column_to_exist
+          column: customer_id
+        
+        - type: expect_column_to_exist
+          column: email
+        
+        - type: expect_column_values_to_be_of_type
+          column: customer_id
+          type_name: int
+        
+        # NOT NULL checks
+        - type: expect_column_values_to_not_be_null
+          column: customer_id
+        
+        - type: expect_column_values_to_not_be_null
+          column: email
+        
+        # Uniqueness check (for primary key)
+        - type: expect_column_values_to_be_unique
+          column: customer_id
+        
+        # Email format validation
+        - type: expect_column_values_to_match_regex
+          column: email
+          regex: "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
+        
+        # Revenue range validation
+        - type: expect_column_values_to_be_between
+          column: lifetime_value
+          min_value: 0
+          max_value: 10000000
+        
+        # Status field allowed values
+        - type: expect_column_values_to_be_in_set
+          column: status
+          value_set: ["Active", "Inactive", "Suspended", "Pending"]
+        
+        # Minimum row count
+        - type: expect_table_row_count_to_be_between
+          min_value: 100
+          max_value: null  # No upper limit

@@ -1,0 +1,47 @@
+# Example 2: Table-to-Table Regression with Anomaly Detection
+#
+# This example shows:
+# - Comparing two Redshift tables across environments
+# - Detecting outliers/anomalies in numeric columns via Isolation Forest
+# - Running regression-mode comprehensive checks (16 validations)
+# - Generating comprehensive reports
+
+validations:
+  - name: "Sales Data Regression with Anomaly Detection"
+    regression: true              # Enable all 16 regression checks
+    
+    source:
+      type: table
+      environment: DEV
+      schema: edw_asis
+      table: sales
+      where_clause: "year = 2024"
+    
+    target:
+      type: table
+      environment: PREPROD
+      schema: edw_asis
+      table: sales
+      where_clause: "year = 2024"
+    
+    primary_keys: "sale_id"
+    output_dir: ./results/sales
+    
+    # ---- Anomaly Detection: Isolation Forest ----
+    anomaly_detection:
+      enabled: true
+      run_on: target            # source | target | both
+      method: isolation_forest
+      
+      # Numeric columns to analyze
+      columns:
+        - amount
+        - discount_pct
+        - quantity
+        - revenue
+      
+      # Outlier detection parameters
+      contamination: 0.02        # Expect ~2% anomalies
+      random_state: 42           # Reproducible results
+      max_samples: auto          # Use 256 samples by default
+      sample_output_rows: 20     # Show top 20 anomalies in reports
