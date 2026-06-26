@@ -1,0 +1,17 @@
+validations:
+  - name: "hubspot_may Validation"
+    source:
+      type: file
+      path: ./raw_data/hubspot_may.csv
+    target:
+      type: table
+      environment: PREPROD
+      schema: edw_asis
+      table: hubspot_gcp_mrr_data
+      where_clause: "edw_act_fl = 'Y'"
+    primary_keys: company_id,contract_id,deal_id,client_key, client
+    output_dir: ./results/hubspot_may_validation
+
+
+# python3 main.py --config config/hubspot_may.yaml
+
