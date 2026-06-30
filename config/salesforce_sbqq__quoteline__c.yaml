@@ -1,0 +1,19 @@
+validations:
+  - name: "salesforce_sbqq__quoteline__c Validation"
+    # Read ONLY the table rows whose primary keys exist in the source file,
+    # instead of loading the full 14M-row table. Validates exactly the source records.
+    filter_target_by_source_pks: true
+    source:
+      type: file
+      path: ./raw_data/sbqq__quoteline__c_6_30_2026.csv
+    target:
+      type: table
+      environment: PREPROD
+      schema: edw_asis
+      table: salesforce_sbqq__quoteline__c
+      where_clause: "edw_act_fl = 'Y'"
+    primary_keys: id
+    output_dir: ./results/salesforce_sbqq__quoteline__c
+
+
+# python3 main.py --config config/salesforce_sbqq__quoteline__c.yaml

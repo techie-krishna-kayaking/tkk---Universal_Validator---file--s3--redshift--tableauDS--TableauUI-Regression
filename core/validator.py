@@ -60,6 +60,10 @@ class Validator:
         ]
         self.quick_sample_pks = config.get('quick_sample_pks', None)
         self.quick_sample_seed = int(config.get('quick_sample_seed', 42))
+        # When true, read only the rows whose primary keys exist in the source
+        # (push the source PKs down to the target query) instead of loading the
+        # full target table. Validates exactly the source's records.
+        self.filter_target_by_source_pks = bool(config.get('filter_target_by_source_pks', False))
 
         if self.quick_sample_pks is not None:
             try:
@@ -307,17 +311,20 @@ class Validator:
         
         logger.info(f"Source: {len(source_df)} rows, {len(source_df.columns)} columns")
         
-        # Smart quick mode: sample source PKs and push down target fetch by PK.
-        if self.quick_sample_pks and isinstance(target_adapter, TableAdapter):
+        # PK pushdown: read only the target rows whose PKs exist in the source
+        # instead of loading the whole table. Triggered either by quick sampling
+        # (quick_sample_pks) or by filter_target_by_source_pks (use ALL source PKs).
+        pk_pushdown_requested = bool(self.quick_sample_pks) or self.filter_target_by_source_pks
+        if pk_pushdown_requested and isinstance(target_adapter, TableAdapter):
             source_pk_cols = [pk for pk in self.primary_keys if pk in source_df.columns]
 
             if not self.primary_keys:
-                logger.warning("quick_sample_pks requested but no primary_keys configured; using regular target load")
+                logger.warning("PK pushdown requested but no primary_keys configured; using regular target load")
                 target_df = target_adapter.load()
                 target_metadata = target_adapter.get_metadata()
             elif len(source_pk_cols) != len(self.primary_keys):
                 logger.warning(
-                    "quick_sample_pks requested but some PKs are missing in source. Found %s of %s PKs; using regular target load",
+                    "PK pushdown requested but some PKs are missing in source. Found %s of %s PKs; using regular target load",
                     len(source_pk_cols),
                     len(self.primary_keys)
                 )
@@ -325,10 +332,12 @@ class Validator:
                 target_metadata = target_adapter.get_metadata()
             else:
                 source_unique_pks = source_df[source_pk_cols].drop_duplicates()
-                sample_size = min(self.quick_sample_pks, len(source_unique_pks))
+                # quick_sample_pks caps the count; otherwise use ALL source PKs.
+                desired_size = self.quick_sample_pks if self.quick_sample_pks else len(source_unique_pks)
+                sample_size = min(desired_size, len(source_unique_pks))
 
                 if sample_size <= 0:
-                    logger.warning("Source has no PK rows for quick sampling; using regular target load")
+                    logger.warning("Source has no PK rows for pushdown; using regular target load")
                     target_df = target_adapter.load()
                     target_metadata = target_adapter.get_metadata()
                 else:
@@ -339,7 +348,7 @@ class Validator:
 
                     source_df = source_df.merge(sampled_pks, on=source_pk_cols, how='inner')
                     logger.info(
-                        "Quick mode enabled: sampled %s PK rows from source (%s total unique PKs)",
+                        "PK pushdown enabled: using %s PK rows from source (%s total unique PKs)",
                         sample_size,
                         len(source_unique_pks)
                     )
@@ -353,7 +362,7 @@ class Validator:
                             target_df = target_adapter.load(pk_columns=target_pk_cols, pk_values=pk_values)
                             target_metadata = target_adapter.get_metadata()
                             logger.info(
-                                "Quick mode target pushdown succeeded using PK columns: %s",
+                                "PK pushdown succeeded using PK columns: %s",
                                 target_pk_cols
                             )
                             pushdown_loaded = True
@@ -362,14 +371,14 @@ class Validator:
                         except Exception as e:
                             last_error = e
                             logger.warning(
-                                "Quick mode target pushdown failed for PK columns %s: %s",
+                                "PK pushdown failed for PK columns %s: %s",
                                 target_pk_cols,
                                 e
                             )
 
                     if not pushdown_loaded:
                         logger.warning(
-                            "Quick mode pushdown failed (%s). Falling back to regular target load.",
+                            "PK pushdown failed (%s). Falling back to regular target load.",
                             last_error
                         )
                         target_df = target_adapter.load()
