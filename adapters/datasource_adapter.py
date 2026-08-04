@@ -18,9 +18,9 @@ from utils.helpers import resolve_path
 
 logger = logging.getLogger(__name__)
 
-# Try to import hyper library for reading Tableau Hyper files
+# Try to import tableauhyperapi for reading Tableau Hyper files
 try:
-    import hyper
+    from tableauhyperapi import HyperProcess, Connection, Telemetry, escape_string_literal
     HYPER_AVAILABLE = True
 except ImportError:
     HYPER_AVAILABLE = False
@@ -60,10 +60,10 @@ class DataSourceAdapter(BaseAdapter):
         self.extract_data = config.get('extract_data', True)
         
         if not self.path.exists():
-            raise FileNotFoundError(f"TWBX file not found: {self.path}")
-        
-        if self.path.suffix.lower() != '.twbx':
-            raise ValueError(f"Expected .twbx file, got: {self.path.suffix}")
+            raise FileNotFoundError(f"Tableau datasource file not found: {self.path}")
+
+        if self.path.suffix.lower() not in ('.twbx', '.tdsx'):
+            raise ValueError(f"Expected .twbx or .tdsx file, got: {self.path.suffix}")
         
         self._tree = None
         self._datasources = None
@@ -78,11 +78,12 @@ class DataSourceAdapter(BaseAdapter):
         logger.info(f"Extracting TWB from: {self.path}")
         
         with zipfile.ZipFile(self.path, 'r') as z:
-            twb_files = [f for f in z.namelist() if f.endswith('.twb')]
-            
+            # .twbx contains .twb; .tdsx contains .tds — both are Tableau XML
+            twb_files = [f for f in z.namelist() if f.endswith('.twb') or f.endswith('.tds')]
+
             if not twb_files:
-                raise ValueError(f"No .twb file found in {self.path}")
-            
+                raise ValueError(f"No .twb or .tds file found in {self.path}")
+
             with z.open(twb_files[0]) as f:
                 self._tree = ET.parse(f)
         
@@ -96,55 +97,60 @@ class DataSourceAdapter(BaseAdapter):
     def _extract_hyper_data(self) -> Optional[pd.DataFrame]:
         """
         Extract data from embedded .hyper file (Tableau 2020.1+).
-        
+
         Returns:
             DataFrame if hyper file found and readable, None otherwise
         """
         if not HYPER_AVAILABLE:
-            logger.debug("hyper library not installed, skipping .hyper extraction")
+            logger.debug("tableauhyperapi not installed, skipping .hyper extraction")
             return None
-        
+
         try:
             with tempfile.TemporaryDirectory() as tmpdir:
                 with zipfile.ZipFile(self.path, 'r') as z:
                     hyper_files = [f for f in z.namelist() if f.endswith('.hyper')]
-                    
+
                     if not hyper_files:
                         return None
-                    
+
                     hyper_file = hyper_files[0]
-                    extract_path = Path(tmpdir) / hyper_file.split('/')[-1]
-                    
+                    extract_path = Path(tmpdir) / Path(hyper_file).name
+
                     with z.open(hyper_file) as f_in:
-                        with open(extract_path, 'wb') as f_out:
-                            f_out.write(f_in.read())
-                    
+                        extract_path.write_bytes(f_in.read())
+
                     logger.info(f"Extracting data from hyper file: {hyper_file}")
-                    
-                    # Use hyper library to read the file
-                    with hyper.open_database(str(extract_path)) as database:
-                        # Get the first table
-                        table_names = database.get_table_names()
-                        if not table_names:
-                            return None
-                        
-                        table_name = table_names[0]
-                        table = database.get_table(table_name)
-                        
-                        # Read table data into pandas DataFrame
-                        rows = []
-                        for row in table.rows():
-                            rows.append(dict(zip([col.name for col in table.columns], row)))
-                        
-                        if rows:
-                            df = pd.DataFrame(rows)
-                            logger.info(f"Loaded {len(df)} rows from hyper file")
-                            self._data_source_type = 'hyper'
-                            return df
-        
+
+                    with HyperProcess(telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU) as hyper_proc:
+                        with Connection(endpoint=hyper_proc.endpoint, database=str(extract_path)) as conn:
+                            schema_names = conn.catalog.get_schema_names()
+                            tables = []
+                            for schema in schema_names:
+                                tables.extend(conn.catalog.get_table_names(schema))
+
+                            if not tables:
+                                logger.warning("No tables found in hyper file")
+                                return None
+
+                            table = tables[0]
+                            with conn.execute_query(f"SELECT * FROM {table}") as result:
+                                col_names = [col.name.unescaped for col in result.schema.columns]
+                                rows = []
+                                while result.next_row():
+                                    rows.append(result.get_values())
+
+                    if not rows:
+                        logger.warning("Hyper file has no rows")
+                        return None
+
+                    df = pd.DataFrame(rows, columns=col_names)
+                    logger.info(f"Loaded {len(df)} rows, {len(df.columns)} columns from hyper file")
+                    self._data_source_type = 'hyper'
+                    return df
+
         except Exception as e:
             logger.warning(f"Failed to extract hyper data: {e}")
-        
+
         return None
     
     def _extract_tde_data(self) -> Optional[pd.DataFrame]:
@@ -311,6 +317,10 @@ class DataSourceAdapter(BaseAdapter):
         root = tree.getroot()
         
         ds_list = root.findall('.//datasource')
+
+        # In .tds files the root element IS the datasource
+        if not ds_list and root.tag == 'datasource':
+            ds_list = [root]
         
         # Filter out built-in datasources
         ds_filtered = [
@@ -350,7 +360,7 @@ class DataSourceAdapter(BaseAdapter):
             data_df = self._extract_data_from_twbx()
             if data_df is not None:
                 logger.info(f"Successfully extracted actual data: {len(data_df)} rows, {len(data_df.columns)} columns")
-                data_df.columns = data_df.columns.str.lower()
+                data_df.columns = [str(c).lower() for c in data_df.columns]
                 self._data = data_df.astype(object)
                 return self._data
         
@@ -370,10 +380,10 @@ class DataSourceAdapter(BaseAdapter):
                 })
         
         df = pd.DataFrame(rows)
-        
+
         logger.info(f"Loaded {len(datasources)} datasources with {len(df)} total columns (metadata)")
-        
-        df.columns = df.columns.str.lower()
+
+        df.columns = [str(c).lower() for c in df.columns]
         self._data = df.astype(object)
         return self._data
     

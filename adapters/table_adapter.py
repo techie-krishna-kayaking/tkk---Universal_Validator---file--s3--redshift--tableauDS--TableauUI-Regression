@@ -95,7 +95,10 @@ class TableAdapter(BaseAdapter):
             self.environment = None
         
         # Table parameters
-        self.table = config['table']
+        self.query = config.get('query', None)
+        self.table = config.get('table', None)
+        if self.query is None and self.table is None:
+            raise ValueError("Either 'table' or 'query' must be specified in the table adapter config")
         self.columns = config.get('columns', None)
         self.where_clause = self._normalize_where_clause(config.get('where_clause', config.get('where')))
         self.limit = config.get('limit', config.get('row_limit', None))
@@ -192,7 +195,28 @@ class TableAdapter(BaseAdapter):
             DataFrame with table contents
         """
         conn = self._get_connection()
-        
+
+        try:
+            # Raw query mode — execute directly, skip dynamic SQL building
+            if self.query:
+                sql = self.query
+                if self.limit is not None:
+                    sql = f"SELECT * FROM ({sql}) AS _query_result LIMIT {self.limit}"
+                logger.info(f"Executing raw query: {sql[:120]}{'...' if len(sql) > 120 else ''}")
+                df = pd.read_sql(sql, conn)
+                df.columns = df.columns.str.lower()
+                self._data = df.astype(object)
+                logger.info(f"Loaded {len(df)} rows from raw query")
+                return self._data
+
+        except Exception as e:
+            logger.error(f"Error executing raw query: {e}")
+            raise
+
+        finally:
+            if self.query:
+                conn.close()
+
         try:
             # Get table columns
             all_columns = self._get_table_columns(conn)
@@ -340,19 +364,27 @@ class TableAdapter(BaseAdapter):
                 'null_count': int(self._data[col].isna().sum())
             })
         
+        if self.query:
+            source_path = f"query:{self.query[:80]}"
+        else:
+            source_path = f"{self.schema}.{self.table}"
+
         return {
             'source_type': 'table',
             'database': self.database,
             'schema': self.schema,
-            'table': self.table,
+            'table': self.table or source_path,
             'where_clause': self.where_clause,
-            'source_path': f"{self.schema}.{self.table}",
+            'source_path': source_path,
             'row_count': len(self._data),
             'column_count': len(self._data.columns),
             'columns': column_info
         }
     
     def __repr__(self) -> str:
+        if self.query:
+            q = self.query[:60] + ('...' if len(self.query) > 60 else '')
+            return f"TableAdapter(env={self.environment}, query='{q}')"
         if self.environment:
             return f"TableAdapter(env={self.environment}, schema={self.schema}, table={self.table})"
         return f"TableAdapter(schema={self.schema}, table={self.table})"

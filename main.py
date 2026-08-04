@@ -9,6 +9,9 @@ Usage:
 """
 import argparse
 import logging
+import os
+import platform
+import subprocess
 import sys
 from pathlib import Path
 
@@ -137,4 +140,16 @@ Configuration file format (YAML):
 
 
 if __name__ == '__main__':
-    main()
+    # Prevent macOS from sleeping during long-running validations
+    _caffeinate = None
+    if platform.system() == 'Darwin':
+        try:
+            _caffeinate = subprocess.Popen(['caffeinate', '-i', '-w', str(os.getpid())])
+        except FileNotFoundError:
+            pass
+
+    try:
+        main()
+    finally:
+        if _caffeinate is not None:
+            _caffeinate.terminate()

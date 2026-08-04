@@ -375,6 +375,26 @@ validations:
       path: ./data/tableau_column_export.csv
     output_dir: ./results
 
+  # ── 25. TWBX Datasource → Redshift via raw SQL query ──────────────────
+  # Use 'query' instead of 'table' when you need joins, filters, or aliases
+  # that can't be expressed through schema/table/where_clause alone.
+  - name: "TWBX to Redshift Custom Query"
+    source:
+      type: datasource
+      path: ./datasources/opp_dashboard.twbx
+      datasource_name: "Opportunity Pipeline"   # optional: pick one datasource
+    target:
+      type: table
+      environment: DEV
+      query: >
+        SELECT o.opportunity_id, o.account_id, o.amount,
+               a.account_name, o.close_date
+        FROM edw_asis.opportunity o
+        JOIN edw_asis.account a ON o.account_id = a.account_id
+        WHERE o.edw_act_fl = 'Y'
+    primary_keys: opportunity_id
+    output_dir: ./results
+
 
 # ────────────────────────────────────────────────────────────────────────────
 # SECTION 7 — Running Multiple Validations Together
