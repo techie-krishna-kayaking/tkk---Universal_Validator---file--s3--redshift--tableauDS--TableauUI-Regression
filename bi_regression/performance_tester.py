@@ -109,11 +109,70 @@ class PerformanceTester:
                 f"[bold]Dashboard:[/] {dash.label}  |  Iterations: {iterations}"
             )
             self.logger.info(f"  URL: [cyan]{dash.url}[/]")
-            result = self._test_dashboard(dash, iterations)
-            results.append(result)
+
+            if dash.test_all_views:
+                view_urls = self._discover_view_urls(dash.url)
+                if not view_urls:
+                    self.logger.warning("  No views discovered — falling back to workbook URL")
+                    view_urls = [(dash.label, dash.url)]
+                else:
+                    self.logger.info(f"  Discovered {len(view_urls)} view(s): {[v[0] for v in view_urls]}")
+                for view_label, view_url in view_urls:
+                    view_dash = dash.model_copy(update={"label": f"{dash.label} › {view_label}", "url": view_url, "test_all_views": False})
+                    results.append(self._test_dashboard(view_dash, iterations))
+            else:
+                results.append(self._test_dashboard(dash, iterations))
 
         self._log_summary(results)
         return results
+
+    # ------------------------------------------------------------------
+
+    def _discover_view_urls(self, workbook_url: str) -> List[tuple]:
+        """
+        Navigate to a Tableau workbook overview page and return
+        [(view_label, absolute_url), ...] for every view found.
+        """
+        page = self.bm.new_page()
+        view_urls: List[tuple] = []
+        try:
+            self.logger.info(f"  Discovering views from: {workbook_url}")
+            page.goto(workbook_url, wait_until="domcontentloaded",
+                      timeout=self.config.browser.page_load_timeout)
+            # Wait for the view list to render (Tableau Online is a SPA)
+            page.wait_for_timeout(5000)
+
+            base = re.match(r"(https?://[^/#]+)", workbook_url)
+            base_url = base.group(1) if base else ""
+
+            # Tableau Online: each view is an <a> whose href contains /views/
+            anchors = page.query_selector_all("a[href*='/views/']")
+            seen: set = set()
+            for a in anchors:
+                href = a.get_attribute("href") or ""
+                # Skip the workbook-level /views listing itself
+                if href.rstrip("/").endswith("/views"):
+                    continue
+                # Build absolute URL (hrefs may be relative or hash-based)
+                if href.startswith("http"):
+                    abs_url = href
+                elif href.startswith("#"):
+                    abs_url = base_url + href
+                else:
+                    abs_url = base_url + "/#" + href.lstrip("/")
+                if abs_url in seen:
+                    continue
+                seen.add(abs_url)
+                label = (a.inner_text() or "").strip() or abs_url.split("/")[-1]
+                view_urls.append((label, abs_url))
+        except Exception as e:
+            self.logger.warning(f"  View discovery failed: {e}")
+        finally:
+            try:
+                page.close()
+            except Exception:
+                pass
+        return view_urls
 
     # ------------------------------------------------------------------
 

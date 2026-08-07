@@ -66,6 +66,7 @@ class PerformanceThresholds(BaseModel):
 class PerformanceDashboard(BaseModel):
     url: str
     label: str = "Dashboard"
+    test_all_views: bool = False           # discover & test every view in the workbook
     interaction: Optional[PerformanceInteraction] = None
     thresholds: PerformanceThresholds = PerformanceThresholds()
 

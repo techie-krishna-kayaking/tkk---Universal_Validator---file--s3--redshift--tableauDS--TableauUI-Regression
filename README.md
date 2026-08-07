@@ -24,20 +24,22 @@
 
 1. [Business Value](#-business-value) — Why use this tool?
 2. [Quick Start](#-quick-start) — 3-minute setup
-3. [Feature Overview](#-feature-overview) — What this tool does
-4. [Data Validation Checks](#-data-validation-checks) — 7 standard + 9 regression
-5. [Great Expectations Rules](#-great-expectations-rules) — Business rule validation (8 types)
-6. [Anomaly Detection](#-anomaly-detection) — Statistical outlier detection
-7. [Configuration Guide](#-configuration-guide) — Full reference
-8. [Source & Target Types](#-source--target-types) — Supported data sources
-9. [Real-World Examples](#-real-world-examples) — Practical patterns
-10. [Architecture](#-architecture) — How it works
-11. [Multi-Environment Support](#-multi-environment-support) — Redshift DEV/PREPROD/PROD
-12. [Reports & Output](#-reports--output) — CSV, HTML, Excel
-13. [Implementation Details](#-implementation-details) — What's new
-14. [Installation & Setup](#-installation--setup) — Get started
-15. [Best Practices](#-best-practices) — How to use effectively
-16. [Troubleshooting](#-troubleshooting) — Common issues
+3. [CLI Command Reference](#-cli-command-reference) — All commands in one place
+4. [Feature Overview](#-feature-overview) — What this tool does
+5. [Data Validation Checks](#-data-validation-checks) — 7 standard + 9 regression
+6. [Great Expectations Rules](#-great-expectations-rules) — Business rule validation (8 types)
+7. [Anomaly Detection](#-anomaly-detection) — Statistical outlier detection
+8. [BI Regression & Performance Testing](#-bi-regression--performance-testing) — Tableau dashboard testing
+9. [Configuration Guide](#-configuration-guide) — Full reference
+10. [Source & Target Types](#-source--target-types) — Supported data sources
+11. [Real-World Examples](#-real-world-examples) — Practical patterns
+12. [Architecture](#-architecture) — How it works
+13. [Multi-Environment Support](#-multi-environment-support) — Redshift DEV/PREPROD/PROD
+14. [Reports & Output](#-reports--output) — CSV, HTML, Excel
+15. [Implementation Details](#-implementation-details) — What's new
+16. [Installation & Setup](#-installation--setup) — Get started
+17. [Best Practices](#-best-practices) — How to use effectively
+18. [Troubleshooting](#-troubleshooting) — Common issues
 
 ---
 
@@ -113,7 +115,20 @@ validations:
 ### 3. Run
 
 ```bash
-python3 main.py --config config/my_validation.yaml
+# Data validation
+python3 cli.py validate --config config/my_validation.yaml
+
+# Run a specific named validation from a multi-validation config
+python3 cli.py validate --config config/my_validation.yaml --name "Customer Data Quality Check"
+
+# BI performance testing
+python3 cli.py regression --config bi_regression/configs/config_performance.yaml
+
+# BI visual comparison / regression
+python3 cli.py regression --config bi_regression/configs/config_comparison.yaml
+
+# BI smoke test
+python3 cli.py regression --config bi_regression/configs/config_smoke.yaml
 ```
 
 **Output:**
@@ -132,7 +147,57 @@ python3 main.py --config config/my_validation.yaml
 
 ---
 
-## 📊 Feature Overview
+## �️ CLI Command Reference
+
+All commands run from the project root (`1IB_universal-validator/`).
+
+### Data Validation
+
+```bash
+# Run all validations in a config file
+python3 cli.py validate --config config/my_validation.yaml
+
+# Run a single named validation
+python3 cli.py validate --config config/my_validation.yaml --name "CSV to Redshift Table"
+
+# Enable debug logging
+python3 cli.py validate --config config/my_validation.yaml --debug
+
+# Cap rows loaded from the target (quick smoke run)
+python3 cli.py validate --config config/my_validation.yaml --target-limit 5000
+
+# Sample N rows by primary key from source & match in target
+python3 cli.py validate --config config/my_validation.yaml --quick-sample-pks 1000
+```
+
+### BI Regression & Performance Testing
+
+```bash
+# Performance test — measures render & interaction time per view
+python3 cli.py regression --config bi_regression/configs/config_performance.yaml
+
+# Visual comparison — screenshots two dashboard versions side-by-side
+python3 cli.py regression --config bi_regression/configs/config_comparison.yaml
+
+# Smoke test — validates a single dashboard loads and passes UI standards
+python3 cli.py regression --config bi_regression/configs/config_smoke.yaml
+```
+
+> The test type (`performance` / `comparison` / `smoke`) is **auto-detected** from which section is present in the YAML — no extra flag needed.
+
+### Alternative entry points
+
+```bash
+# data validation — legacy direct entry (same as cli.py validate)
+python3 main.py --config config/my_validation.yaml
+
+# BI regression — legacy direct entry (same as cli.py regression)
+python3 -m bi_regression.run --config bi_regression/configs/config_performance.yaml
+```
+
+---
+
+## �📊 Feature Overview
 
 ### What This Tool Does
 
@@ -648,7 +713,73 @@ validations:
 
 ---
 
-## 📋 Configuration Guide
+## �️ BI Regression & Performance Testing
+
+Tests Tableau dashboards directly in the browser using Playwright. Three test types share the same CLI entry point — the type is auto-detected from the YAML config section.
+
+### Performance Testing
+
+Measures how long each dashboard view takes to render and respond to interactions.
+
+**Config:** `bi_regression/configs/config_performance.yaml`
+
+```yaml
+performance:
+  iterations: 3                       # repeat each view N times and average
+
+  dashboards:
+    - url: "https://prod-useast-b.online.tableau.com/#/site/infoblox/workbooks/4456901/views"
+      label: "UAI Performance Dashboard_v1"
+      test_all_views: true            # auto-discovers & tests all views in the workbook
+      interaction:
+        type: "filter"                # "filter" or "tab_switch"
+        filter_name: "Region"
+        filter_value: "Americas"
+      thresholds:
+        first_render_ms: 15000        # FAIL if avg render > 15 s
+        interaction_ms: 8000          # FAIL if avg interaction > 8 s
+```
+
+```bash
+python3 cli.py regression --config bi_regression/configs/config_performance.yaml
+```
+
+**What it measures per view:**
+- **First render time** — navigation start → Tableau viz detected in DOM
+- **Interaction time** — filter change or tab switch → viz re-renders
+- **Min / Max / Avg** across all iterations
+- **PASS / FAIL** vs configured thresholds
+- **Screenshots** after render and after interaction (iteration 1 only)
+
+**`test_all_views: true`** — automatically discovers all view URLs from the workbook overview page and tests each one separately. Results are labelled `Dashboard › View Name`.
+
+---
+
+### Visual Comparison (Regression)
+
+Screenshots two dashboard versions side-by-side and flags visual differences.
+
+**Config:** `bi_regression/configs/config_comparison.yaml`
+
+```bash
+python3 cli.py regression --config bi_regression/configs/config_comparison.yaml
+```
+
+---
+
+### Smoke Test
+
+Validates that a dashboard loads and meets UI standards (fonts, colors, element presence).
+
+**Config:** `bi_regression/configs/config_smoke.yaml`
+
+```bash
+python3 cli.py regression --config bi_regression/configs/config_smoke.yaml
+```
+
+---
+
+## �📋 Configuration Guide
 
 ### Complete Configuration Template
 

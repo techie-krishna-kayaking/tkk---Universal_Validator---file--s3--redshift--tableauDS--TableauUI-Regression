@@ -10,10 +10,11 @@ performance:
   iterations: 3                       # repeat each dashboard N times
 
   dashboards:
-    - url: "https://prod-useast-b.online.tableau.com/#/site/infoblox/views/SalesToolsUtilizationDashboard/SalesToolsSummary"
-      label: "Sales Tools Summary"
+    - url: "https://prod-useast-b.online.tableau.com/#/site/infoblox/workbooks/4456901/views"
+      label: "UAI Performance Dashboard_v1"
+      test_all_views: true              # auto-discovers & tests all 4 views
       interaction:
-        type: "filter"                # "filter" or "tab_switch"
+        type: "filter"                # applied to each discovered view
         filter_name: "Region"
         filter_value: "Americas"
       thresholds:
