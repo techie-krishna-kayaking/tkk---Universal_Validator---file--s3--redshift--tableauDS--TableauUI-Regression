@@ -139,8 +139,18 @@ class PerformanceTester:
             self.logger.info(f"  Discovering views from: {workbook_url}")
             page.goto(workbook_url, wait_until="domcontentloaded",
                       timeout=self.config.browser.page_load_timeout)
+            page.bring_to_front()
+            current_url = page.url
+            self.logger.info(f"  Page landed on: {current_url}")
+            sso_indicators = ("okta", "login", "signon", "auth", "saml", "idp", "microsoftonline")
+            if any(s in current_url.lower() for s in sso_indicators):
+                self.logger.error(
+                    f"  SSO redirect detected ({current_url}).\n"
+                    f"  Open Edge manually, log in to Tableau Cloud, then re-run."
+                )
+                return view_urls
             # Wait for the view list to render (Tableau Online is a SPA)
-            page.wait_for_timeout(5000)
+            page.wait_for_timeout(8000)
 
             base = re.match(r"(https?://[^/#]+)", workbook_url)
             base_url = base.group(1) if base else ""
@@ -302,9 +312,30 @@ class PerformanceTester:
         """Navigate and return milliseconds until Tableau viz is detected."""
         start = time.perf_counter()
         page.goto(url, wait_until="domcontentloaded", timeout=self.config.browser.page_load_timeout)
+        page.bring_to_front()
+        current_url = page.url
+        self.logger.info(f"    Navigated to: {current_url}")
+        self._check_for_sso_redirect(current_url)
         self._wait_for_tableau_rendered(page, label)
         end = time.perf_counter()
         return (end - start) * 1000
+
+    def _check_for_sso_redirect(self, current_url: str) -> None:
+        """Raise a clear error if the browser landed on an SSO/login page."""
+        sso_indicators = ("okta", "login", "signon", "auth", "saml", "idp", "microsoftonline")
+        if not any(s in current_url.lower() for s in sso_indicators):
+            return
+        self.logger.warning(
+            f"\n"
+            f"┌──────────────────────────────────────────────────────┐\n"
+            f"│  LOGIN REQUIRED                                      │\n"
+            f"│  Tableau Cloud redirected to SSO / Okta.             │\n"
+            f"│  Please log in in the Edge window, then press Enter. │\n"
+            f"└──────────────────────────────────────────────────────┘"
+        )
+        input("  ▶  Press Enter once you are logged in to Tableau Cloud... ")
+        # give the SPA a moment to finish routing after login
+        time.sleep(5)
 
     def _wait_for_tableau_rendered(self, page: Page, label: str = "") -> None:
         """Wait until a Tableau container element appears in any frame."""

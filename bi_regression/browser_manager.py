@@ -75,23 +75,26 @@ class BrowserManager:
             return
         self.logger.warning("Stage 2: CDP not available (Edge not started with --remote-debugging-port).")
 
-        # ── Stage 3: Close Edge + re-launch ────────────────────────────
-        self.logger.info(
-            "Stage 3: Closing the running Edge instance and relaunching…"
+        # ── Stage 3: Prompt user to close Edge, then re-launch ───────────────────────
+        self.logger.warning(
+            "\n"
+            "┌──────────────────────────────────────────────────────┐\n"
+            "│  ACTION REQUIRED                                     │\n"
+            "│  Edge is already running and its profile is locked.  │\n"
+            "│  Please close ALL Edge windows, then press Enter.    │\n"
+            "└──────────────────────────────────────────────────────┘"
         )
-        self._close_edge_gracefully()
+        input("  ▶  Press Enter after closing Edge... ")
+        time.sleep(2)  # give OS time to release the profile lock
 
         try:
             self.context = self._make_persistent_context(bc)
-            self.logger.info(
-                "[green]Stage 3: Edge relaunched successfully.[/] "
-                "[yellow](Your Okta session is still active from the saved profile.)[/]"
-            )
+            self.logger.info("[green]Stage 3: Edge relaunched successfully.[/]")
         except Exception as retry_err:
             raise RuntimeError(
                 f"Could not launch Edge even after closing it.\n"
                 f"Error: {retry_err}\n\n"
-                "Please close Edge manually, then run again."
+                "Please make sure all Edge windows are fully closed, then run again."
             ) from None
 
     # ------------------------------------------------------------------
