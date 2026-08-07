@@ -13,6 +13,8 @@ Stage 3: Gracefully close Edge via  — kills the running Edge, waits, then
 import subprocess
 import time
 import logging
+import sys
+import os
 from playwright.sync_api import sync_playwright, BrowserContext, Page
 
 from bi_regression.config_parser import TestConfig
@@ -27,6 +29,7 @@ class BrowserManager:
         self.logger = logger or logging.getLogger(__name__)
         self._playwright = None
         self.context: BrowserContext = None
+        self._browser = None  # Store browser reference
         self._cdp_browser = None
 
     # ------------------------------------------------------------------
@@ -54,64 +57,75 @@ class BrowserManager:
         self.logger.info("[green]Browser ready.[/]")
 
     def _try_launch_or_connect(self, bc):
-        """Three-stage launch strategy — fully automatic, no manual steps."""
-
-        # ── Stage 1: Normal persistent launch ─────────────────────────
+        """Launch using user's Edge profile so saved credentials are available."""
         try:
-            self.context = self._make_persistent_context(bc)
-            self.logger.info("[green]Stage 1: Edge launched via persistent profile.[/]")
+            # Use persistent context with your profile so passwords are saved
+            self.context = self._playwright.chromium.launch_persistent_context(
+                user_data_dir=bc.user_data_dir,
+                channel="msedge",
+                headless=bc.headless,
+                args=[
+                    f"--profile-directory={bc.profile_dir}",
+                    "--disable-blink-features=AutomationControlled",
+                ],
+                viewport={"width": bc.viewport_width, "height": bc.viewport_height},
+            )
+            self._browser = self.context.browser
+            self.logger.info("[green]✓ Edge launched with your profile (saved passwords available)[/]")
             return
         except Exception as e:
-            if not ("ProcessSingleton" in str(e) or "profile is already in use" in str(e)):
-                raise  # Not a profile-lock issue — re-raise
-            self.logger.warning(
-                "[yellow]Stage 1: Edge profile is locked (Edge is already running).[/]"
-            )
-
-        # ── Stage 2: CDP connect (if Edge has remote debugging enabled) ─
-        self.logger.info(f"Stage 2: Trying CDP on {_CDP_URL}…")
-        if self._try_cdp_silent(bc):
-            self.logger.info(f"[green]Stage 2: Connected to running Edge via CDP.[/]")
-            return
-        self.logger.warning("Stage 2: CDP not available (Edge not started with --remote-debugging-port).")
-
-        # ── Stage 3: Prompt user to close Edge, then re-launch ───────────────────────
-        self.logger.warning(
-            "\n"
-            "┌──────────────────────────────────────────────────────┐\n"
-            "│  ACTION REQUIRED                                     │\n"
-            "│  Edge is already running and its profile is locked.  │\n"
-            "│  Please close ALL Edge windows, then press Enter.    │\n"
-            "└──────────────────────────────────────────────────────┘"
-        )
-        input("  ▶  Press Enter after closing Edge... ")
-        time.sleep(2)  # give OS time to release the profile lock
-
-        try:
-            self.context = self._make_persistent_context(bc)
-            self.logger.info("[green]Stage 3: Edge relaunched successfully.[/]")
-        except Exception as retry_err:
-            raise RuntimeError(
-                f"Could not launch Edge even after closing it.\n"
-                f"Error: {retry_err}\n\n"
-                "Please make sure all Edge windows are fully closed, then run again."
-            ) from None
+            error_str = str(e)
+            if "ProcessSingleton" in error_str or "profile is already in use" in error_str:
+                # Edge is already running — kill it and clean up lock file
+                self.logger.warning("[yellow]Edge is already running, cleaning up and retrying...[/]")
+                subprocess.run(["pkill", "-9", "msedge"], check=False)
+                
+                # Remove the lock file that's preventing restart
+                lock_file = os.path.join(bc.user_data_dir, "SingletonLock")
+                if os.path.exists(lock_file):
+                    try:
+                        os.remove(lock_file)
+                        self.logger.debug(f"Removed stale lock file: {lock_file}")
+                    except Exception as e:
+                        self.logger.debug(f"Could not remove lock file: {e}")
+                
+                time.sleep(2)
+                try:
+                    self.context = self._playwright.chromium.launch_persistent_context(
+                        user_data_dir=bc.user_data_dir,
+                        channel="msedge",
+                        headless=bc.headless,
+                        args=[
+                            f"--profile-directory={bc.profile_dir}",
+                            "--disable-blink-features=AutomationControlled",
+                        ],
+                        viewport={"width": bc.viewport_width, "height": bc.viewport_height},
+                    )
+                    self._browser = self.context.browser
+                    self.logger.info("[green]✓ Edge relaunched successfully[/]")
+                    return
+                except Exception as retry_err:
+                    raise RuntimeError(f"Could not relaunch Edge: {retry_err}") from None
+            else:
+                raise RuntimeError(f"Could not launch Edge: {e}") from None
 
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
 
     def _make_persistent_context(self, bc) -> BrowserContext:
-        return self._playwright.chromium.launch_persistent_context(
-            user_data_dir=bc.user_data_dir,
+        # Launch Edge normally (not persistent context which can hang on profile locks)
+        # Then create a single context from it
+        self._browser = self._playwright.chromium.launch(
             channel="msedge",
             headless=bc.headless,
             args=[
-                f"--profile-directory={bc.profile_dir}",
                 "--disable-blink-features=AutomationControlled",
                 "--start-maximized",
             ],
-            viewport={"width": bc.viewport_width, "height": bc.viewport_height},
+        )
+        return self._browser.new_context(
+            viewport={"width": bc.viewport_width, "height": bc.viewport_height}
         )
 
     def _try_cdp_silent(self, bc) -> bool:
@@ -165,7 +179,9 @@ class BrowserManager:
                 self._cdp_browser.close()
             elif self.context:
                 self.context.close()
-            self.logger.info("Browser connection closed.")
+            if self._browser:
+                self._browser.close()
+            self.logger.info("[green]✓ Browser closed[/]")
         except Exception as e:
             self.logger.debug(f"Error during browser close: {e}")
         try:

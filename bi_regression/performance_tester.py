@@ -136,27 +136,33 @@ class PerformanceTester:
         page = self.bm.new_page()
         view_urls: List[tuple] = []
         try:
-            self.logger.info(f"  Discovering views from: {workbook_url}")
+            self.logger.info(f"  [1/5] Discovering views from: {workbook_url}")
+            self.logger.info(f"  [2/5] Navigating to workbook URL...")
             page.goto(workbook_url, wait_until="domcontentloaded",
                       timeout=self.config.browser.page_load_timeout)
+            self.logger.info(f"  [3/5] Navigation complete, bringing tab to front...")
             page.bring_to_front()
             current_url = page.url
-            self.logger.info(f"  Page landed on: {current_url}")
+            self.logger.info(f"  [4/5] Page landed on: {current_url}")
             sso_indicators = ("okta", "login", "signon", "auth", "saml", "idp", "microsoftonline")
             if any(s in current_url.lower() for s in sso_indicators):
-                self.logger.error(
-                    f"  SSO redirect detected ({current_url}).\n"
-                    f"  Open Edge manually, log in to Tableau Cloud, then re-run."
+                self.logger.warning(
+                    f"  ⚠️  SSO redirect detected. Please log in in the Edge window.\n"
+                    f"  Current URL: {current_url}"
                 )
                 return view_urls
             # Wait for the view list to render (Tableau Online is a SPA)
+            self.logger.info(f"  [5/5] Waiting 8 seconds for Tableau SPA to render...")
             page.wait_for_timeout(8000)
 
             base = re.match(r"(https?://[^/#]+)", workbook_url)
             base_url = base.group(1) if base else ""
 
             # Tableau Online: each view is an <a> whose href contains /views/
+            self.logger.info(f"  Querying for view links (a[href*='/views/'])...")
             anchors = page.query_selector_all("a[href*='/views/']")
+            self.logger.info(f"  Found {len(anchors)} potential view links")
+            
             seen: set = set()
             for a in anchors:
                 href = a.get_attribute("href") or ""
@@ -175,8 +181,10 @@ class PerformanceTester:
                 seen.add(abs_url)
                 label = (a.inner_text() or "").strip() or abs_url.split("/")[-1]
                 view_urls.append((label, abs_url))
+            
+            self.logger.info(f"  ✅ Discovered {len(view_urls)} view(s): {[v[0] for v in view_urls]}")
         except Exception as e:
-            self.logger.warning(f"  View discovery failed: {e}")
+            self.logger.error(f"  ❌ View discovery failed: {e}", exc_info=True)
         finally:
             try:
                 page.close()
@@ -191,6 +199,11 @@ class PerformanceTester:
     ) -> PerfDashboardResult:
         iters: List[PerfIteration] = []
         screenshot_path = ""
+
+        print(f"\n{'='*60}")
+        print(f"TESTING DASHBOARD: {dash.label}")
+        print(f"URL: {dash.url}")
+        print(f"{'='*60}\n")
 
         for i in range(1, num_iterations + 1):
             self.logger.info(f"  [cyan]Iteration {i}/{num_iterations}[/]")
@@ -311,10 +324,18 @@ class PerformanceTester:
     def _measure_first_render(self, page: Page, url: str, label: str) -> float:
         """Navigate and return milliseconds until Tableau viz is detected."""
         start = time.perf_counter()
+        self.logger.info(f"    🌐 Navigating to: {url}")
         page.goto(url, wait_until="domcontentloaded", timeout=self.config.browser.page_load_timeout)
+        time.sleep(1)  # Give page a moment to settle
         page.bring_to_front()
         current_url = page.url
-        self.logger.info(f"    Navigated to: {current_url}")
+        self.logger.info(f"    ✓ Landed on: {current_url}")
+        
+        # Print to console so user sees it
+        print(f"\n{'='*60}")
+        print(f"NAVIGATED TO: {current_url}")
+        print(f"{'='*60}\n")
+        
         self._check_for_sso_redirect(current_url)
         self._wait_for_tableau_rendered(page, label)
         end = time.perf_counter()

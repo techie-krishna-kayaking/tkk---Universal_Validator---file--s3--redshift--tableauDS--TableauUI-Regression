@@ -30,3 +30,4 @@ performance:
     #   thresholds:
     #     first_render_ms: 12000
     #     interaction_ms: 5000
+
