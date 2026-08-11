@@ -57,57 +57,71 @@ class BrowserManager:
         self.logger.info("[green]Browser ready.[/]")
 
     def _try_launch_or_connect(self, bc):
-        """Launch using user's Edge profile so saved credentials are available."""
+        """Launch Edge with the dedicated automation profile so the Okta/Tableau
+        session (logged in once) is reused. This runs alongside your normal Edge.
+        """
+        self._remove_singleton_locks(bc)
         try:
-            # Use persistent context with your profile so passwords are saved
-            self.context = self._playwright.chromium.launch_persistent_context(
-                user_data_dir=bc.user_data_dir,
-                channel="msedge",
-                headless=bc.headless,
-                args=[
-                    f"--profile-directory={bc.profile_dir}",
-                    "--disable-blink-features=AutomationControlled",
-                ],
-                viewport={"width": bc.viewport_width, "height": bc.viewport_height},
-            )
+            self.context = self._launch_persistent(bc)
             self._browser = self.context.browser
-            self.logger.info("[green]✓ Edge launched with your profile (saved passwords available)[/]")
+            self.logger.info("[green]✓ Edge launched with the automation profile (Okta/Tableau session reused)[/]")
             return
         except Exception as e:
-            error_str = str(e)
-            if "ProcessSingleton" in error_str or "profile is already in use" in error_str:
-                # Edge is already running — kill it and clean up lock file
-                self.logger.warning("[yellow]Edge is already running, cleaning up and retrying...[/]")
-                subprocess.run(["pkill", "-9", "msedge"], check=False)
-                
-                # Remove the lock file that's preventing restart
-                lock_file = os.path.join(bc.user_data_dir, "SingletonLock")
-                if os.path.exists(lock_file):
-                    try:
-                        os.remove(lock_file)
-                        self.logger.debug(f"Removed stale lock file: {lock_file}")
-                    except Exception as e:
-                        self.logger.debug(f"Could not remove lock file: {e}")
-                
-                time.sleep(2)
-                try:
-                    self.context = self._playwright.chromium.launch_persistent_context(
-                        user_data_dir=bc.user_data_dir,
-                        channel="msedge",
-                        headless=bc.headless,
-                        args=[
-                            f"--profile-directory={bc.profile_dir}",
-                            "--disable-blink-features=AutomationControlled",
-                        ],
-                        viewport={"width": bc.viewport_width, "height": bc.viewport_height},
-                    )
-                    self._browser = self.context.browser
-                    self.logger.info("[green]✓ Edge relaunched successfully[/]")
-                    return
-                except Exception as retry_err:
-                    raise RuntimeError(f"Could not relaunch Edge: {retry_err}") from None
-            else:
-                raise RuntimeError(f"Could not launch Edge: {e}") from None
+            self.logger.warning(
+                f"[yellow]Edge launch failed ({e}); clearing the automation profile lock and retrying…[/]"
+            )
+            self._kill_edge_for_profile(bc)
+            self._remove_singleton_locks(bc)
+            time.sleep(2)
+            try:
+                self.context = self._launch_persistent(bc)
+                self._browser = self.context.browser
+                self.logger.info("[green]✓ Edge relaunched successfully[/]")
+                return
+            except Exception as retry_err:
+                raise RuntimeError(f"Could not launch Edge: {retry_err}") from None
+
+    def _launch_persistent(self, bc):
+        """Start a Playwright-managed Edge using the automation profile (bounded timeout)."""
+        os.makedirs(bc.user_data_dir, exist_ok=True)
+        return self._playwright.chromium.launch_persistent_context(
+            user_data_dir=bc.user_data_dir,
+            channel="msedge",
+            headless=bc.headless,
+            timeout=60000,   # fail fast instead of hanging if the profile is locked
+            args=[
+                f"--profile-directory={bc.profile_dir}",
+                "--disable-blink-features=AutomationControlled",
+                "--no-first-run",
+                "--no-default-browser-check",
+            ],
+            viewport={"width": bc.viewport_width, "height": bc.viewport_height},
+        )
+
+    def _kill_edge_for_profile(self, bc):
+        """Kill only Edge processes using OUR automation profile dir (leave the user's Edge alone)."""
+        try:
+            out = subprocess.run(
+                ["pgrep", "-fl", "Microsoft Edge"], capture_output=True, text=True
+            ).stdout
+            for line in out.splitlines():
+                if bc.user_data_dir in line:
+                    pid = line.split()[0]
+                    subprocess.run(["kill", "-9", pid], check=False)
+                    self.logger.debug(f"Killed stale automation Edge pid {pid}")
+        except Exception as e:
+            self.logger.debug(f"Could not target automation Edge: {e}")
+
+    def _remove_singleton_locks(self, bc):
+        """Remove stale singleton lock files that block a fresh profile launch."""
+        for name in ("SingletonLock", "SingletonCookie", "SingletonSocket"):
+            path = os.path.join(bc.user_data_dir, name)
+            try:
+                if os.path.islink(path) or os.path.exists(path):
+                    os.remove(path)
+                    self.logger.debug(f"Removed stale lock: {path}")
+            except Exception as e:
+                self.logger.debug(f"Could not remove {path}: {e}")
 
     # ------------------------------------------------------------------
     # Helpers
@@ -195,8 +209,25 @@ class BrowserManager:
     # ------------------------------------------------------------------
 
     def new_page(self) -> Page:
-        page = self.context.new_page()
+        # Reuse the existing visible tab (about:blank) that the persistent
+        # context already opened, so the user sees navigation happen.
+        # Only create a new tab if no reusable page exists.
+        existing = [p for p in self.context.pages if not p.is_closed()]
+        if existing:
+            page = existing[0]
+            # Close any extra background tabs to avoid confusion
+            for extra in existing[1:]:
+                try:
+                    extra.close()
+                except Exception:
+                    pass
+        else:
+            page = self.context.new_page()
         page.set_default_timeout(self.config.browser.page_load_timeout)
+        try:
+            page.bring_to_front()
+        except Exception:
+            pass
         return page
 
     def navigate_with_retry(self, page: Page, url: str, label: str = "") -> None:

@@ -143,6 +143,28 @@ _PERF_TEMPLATE = """<!DOCTYPE html>
     .iter-table tr:hover td { background: rgba(255,255,255,0.02); }
     .iter-table .ms { font-family: monospace; font-weight: 600; }
 
+    /* Per-chart table */
+    .chart-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
+    .chart-table th {
+      text-align: left; padding: 8px 12px;
+      background: rgba(255,255,255,0.05);
+      color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+    }
+    .chart-table td { padding: 8px 12px; border-top: 1px solid var(--border); }
+    .chart-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .chart-table .ms { font-family: monospace; font-weight: 600; }
+    .cold-color { color: #60a5fa; }
+    .warm-color { color: var(--warn); }
+    .metric-badge.cold { background: rgba(96,165,250,0.15); color: #60a5fa; }
+    .metric-badge.warm { background: rgba(245,158,11,0.15); color: var(--warn); }
+
+    .max-banner {
+      margin-top: 16px; padding: 12px 16px; border-radius: 8px;
+      background: rgba(91,106,240,0.12); border: 1px solid var(--accent);
+      font-size: 13px; color: var(--text);
+    }
+    .max-banner strong { color: var(--accent); font-size: 16px; }
+
     /* Screenshot */
     .screenshot-section { margin-top: 20px; }
     .screenshot-section .ss-label {
@@ -201,8 +223,12 @@ _PERF_TEMPLATE = """<!DOCTYPE html>
     <div class="value">{{ failed }}</div>
   </div>
   <div class="stat-card total">
-    <div class="label">Iterations</div>
-    <div class="value">{{ iterations }}</div>
+    <div class="label">Charts Measured</div>
+    <div class="value">{{ total_charts }}</div>
+  </div>
+  <div class="stat-card total">
+    <div class="label">Max Load Time</div>
+    <div class="value">{{ "%.0f"|format(overall_max_ms) }}<small style="font-size:16px;">ms</small></div>
   </div>
 </div>
 
@@ -219,90 +245,127 @@ _PERF_TEMPLATE = """<!DOCTYPE html>
       </div>
       <div class="card-body">
 
-        <!-- Metrics summary -->
+        <div class="max-banner">
+          Maximum time observed: <strong>{{ "%.0f"|format(r.max_time_ms) }} ms</strong>
+          &nbsp;·&nbsp; {{ r.chart_count }} chart(s) measured
+        </div>
+
+        <!-- Cold vs Warm full-dashboard load -->
         <div class="metrics-grid">
           <div class="metric-box">
-            <h4>First Render Time
-              <span class="metric-badge {{ 'pass' if r.first_render_passed else 'fail' }}">
-                {{ 'PASS' if r.first_render_passed else 'FAIL' }}
+            <h4>Cold Load — Uncached
+              <span class="metric-badge {{ 'pass' if r.cold_passed else 'fail' }}">
+                {{ 'PASS' if r.cold_passed else 'FAIL' }}
               </span>
             </h4>
             <div class="metric-stats">
               <div class="metric-stat">
                 <div class="ms-label">Min</div>
-                <div class="ms-value accent-color">{{ "%.0f"|format(r.first_render_min) }}<small>ms</small></div>
+                <div class="ms-value accent-color">{{ "%.0f"|format(r.cold_full_min) }}<small>ms</small></div>
               </div>
               <div class="metric-stat">
                 <div class="ms-label">Avg</div>
-                <div class="ms-value {{ 'pass-color' if r.first_render_passed else 'fail-color' }}">{{ "%.0f"|format(r.first_render_avg) }}<small>ms</small></div>
+                <div class="ms-value {{ 'pass-color' if r.cold_passed else 'fail-color' }}">{{ "%.0f"|format(r.cold_full_avg) }}<small>ms</small></div>
               </div>
               <div class="metric-stat">
                 <div class="ms-label">Max</div>
-                <div class="ms-value accent-color">{{ "%.0f"|format(r.first_render_max) }}<small>ms</small></div>
+                <div class="ms-value accent-color">{{ "%.0f"|format(r.cold_full_max) }}<small>ms</small></div>
               </div>
             </div>
-            <div class="threshold-line">Threshold: <strong>{{ "%.0f"|format(r.first_render_threshold) }} ms</strong></div>
+            <div class="threshold-line">Threshold: <strong>{{ "%.0f"|format(r.cold_threshold) }} ms</strong> (full dashboard, cache cleared)</div>
           </div>
 
           <div class="metric-box">
-            <h4>Interaction Time
-              <span class="metric-badge {{ 'pass' if r.interaction_passed else 'fail' }}">
-                {{ 'PASS' if r.interaction_passed else 'FAIL' }}
-              </span>
+            <h4>Warm Load — Cached
+              <span class="metric-badge warm">CACHED</span>
             </h4>
             <div class="metric-stats">
               <div class="metric-stat">
                 <div class="ms-label">Min</div>
-                <div class="ms-value accent-color">{{ "%.0f"|format(r.interaction_min) }}<small>ms</small></div>
+                <div class="ms-value warm-color">{{ "%.0f"|format(r.warm_full_min) }}<small>ms</small></div>
               </div>
               <div class="metric-stat">
                 <div class="ms-label">Avg</div>
-                <div class="ms-value {{ 'pass-color' if r.interaction_passed else 'fail-color' }}">{{ "%.0f"|format(r.interaction_avg) }}<small>ms</small></div>
+                <div class="ms-value warm-color">{{ "%.0f"|format(r.warm_full_avg) }}<small>ms</small></div>
               </div>
               <div class="metric-stat">
                 <div class="ms-label">Max</div>
-                <div class="ms-value accent-color">{{ "%.0f"|format(r.interaction_max) }}<small>ms</small></div>
+                <div class="ms-value warm-color">{{ "%.0f"|format(r.warm_full_max) }}<small>ms</small></div>
               </div>
             </div>
-            <div class="threshold-line">Threshold: <strong>{{ "%.0f"|format(r.interaction_threshold) }} ms</strong></div>
+            <div class="threshold-line">Best-case timing with browser cache populated</div>
           </div>
         </div>
 
-        <!-- Bar chart of iterations -->
-        {% if r.iterations %}
-        <h4 style="margin-top:20px; font-size:13px; color:var(--muted);">Iteration Timings</h4>
-        <div class="bar-chart">
-          {% set max_ms = r.chart_max %}
-          {% for it in r.iterations %}
-          <div class="bar-group">
-            {% if max_ms > 0 %}
-            <div class="bar render" style="height: {{ (it.first_render_ms / max_ms * 100)|int }}%;" title="Render: {{ '%.0f'|format(it.first_render_ms) }}ms"></div>
-            {% endif %}
-            <div class="bar-label">#{{ it.iteration }}</div>
+        <!-- Filter refresh -->
+        {% if r.has_filter %}
+        <div class="metric-box" style="margin-top:16px;">
+          <h4>Filter Refresh — {{ r.filter_name }}
+            <span class="metric-badge {{ 'pass' if r.filter_passed else 'fail' }}">
+              {{ 'PASS' if r.filter_passed else 'FAIL' }}
+            </span>
+          </h4>
+          <div class="metric-stats">
+            <div class="metric-stat">
+              <div class="ms-label">Min</div>
+              <div class="ms-value accent-color">{{ "%.0f"|format(r.filter_min) }}<small>ms</small></div>
+            </div>
+            <div class="metric-stat">
+              <div class="ms-label">Avg</div>
+              <div class="ms-value {{ 'pass-color' if r.filter_passed else 'fail-color' }}">{{ "%.0f"|format(r.filter_avg) }}<small>ms</small></div>
+            </div>
+            <div class="metric-stat">
+              <div class="ms-label">Max</div>
+              <div class="ms-value accent-color">{{ "%.0f"|format(r.filter_max) }}<small>ms</small></div>
+            </div>
           </div>
-          {% endfor %}
-        </div>
-        <div class="bar-chart-legend">
-          <span><span class="dot" style="background:var(--accent);"></span> First Render</span>
-          <span><span class="dot" style="background:var(--warn);"></span> Interaction</span>
+          <div class="threshold-line">Threshold: <strong>{{ "%.0f"|format(r.filter_threshold) }} ms</strong> (time to re-render after filter change)</div>
         </div>
         {% endif %}
 
-        <!-- Iteration details table -->
+        <!-- Per-chart load times -->
+        {% if r.chart_stats %}
+        <h4 style="margin-top:20px; font-size:13px; color:var(--muted);">Per-Chart Load Times</h4>
+        <table class="chart-table">
+          <thead>
+            <tr>
+              <th>Chart / Worksheet</th>
+              <th>Cold Avg (ms)</th>
+              <th>Warm Avg (ms)</th>
+              <th>Max (ms)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in r.chart_stats %}
+            <tr>
+              <td>{{ c.name }}</td>
+              <td class="ms cold-color">{{ "%.0f"|format(c.cold_avg_ms) }}</td>
+              <td class="ms warm-color">{{ "%.0f"|format(c.warm_avg_ms) }}</td>
+              <td class="ms">{{ "%.0f"|format(c.max_ms) }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% endif %}
+
+        <!-- Full-dashboard load per iteration -->
+        <h4 style="margin-top:20px; font-size:13px; color:var(--muted);">Full-Dashboard Load per Iteration</h4>
         <table class="iter-table">
           <thead>
             <tr>
               <th>Iteration</th>
-              <th>First Render (ms)</th>
-              <th>Interaction (ms)</th>
+              <th>Mode</th>
+              <th>Full Load (ms)</th>
+              <th>Charts</th>
             </tr>
           </thead>
           <tbody>
-            {% for it in r.iterations %}
+            {% for lp in r.loads %}
             <tr>
-              <td>{{ it.iteration }}</td>
-              <td class="ms">{{ "%.0f"|format(it.first_render_ms) if it.first_render_ms >= 0 else 'ERROR' }}</td>
-              <td class="ms">{{ "%.0f"|format(it.interaction_ms) if it.interaction_ms >= 0 else 'ERROR' }}</td>
+              <td>{{ lp.iteration }}</td>
+              <td>{{ lp.mode|upper }}</td>
+              <td class="ms">{{ "%.0f"|format(lp.full_load_ms) }}</td>
+              <td>{{ lp.chart_count }}</td>
             </tr>
             {% endfor %}
           </tbody>
@@ -371,42 +434,109 @@ class PerformanceReporter:
         """Generate both the HTML report and CSV file. Returns the HTML path."""
         html_path = self._generate_html()
         csv_path = self._generate_csv()
+        self._print_terminal_report(html_path, csv_path)
         return html_path
+
+    # ------------------------------------------------------------------
+
+    def _print_terminal_report(self, html_path: Path, csv_path: Path) -> None:
+        """Print a readable performance summary to the terminal."""
+        results = self.results
+        total = len(results)
+        passed = sum(1 for r in results if r.passed)
+
+        out = []
+        out.append("")
+        out.append("=" * 92)
+        out.append("  TABLEAU DASHBOARD PERFORMANCE REPORT")
+        out.append("=" * 92)
+        out.append(
+            f"  Run: {datetime.now():%Y-%m-%d %H:%M:%S}   "
+            f"Sheets: {total}   Iterations: {self.config.performance.iterations}   "
+            f"Passed: {passed}/{total}"
+        )
+        out.append(f"  Output folder : {self.run_dir}")
+        out.append(f"  HTML report   : {html_path}")
+        out.append(f"  CSV file      : {csv_path}")
+        out.append("-" * 92)
+        out.append(
+            f"  {'Sheet':<34}{'Charts':>6}{'ColdAvg':>10}{'ColdMax':>10}"
+            f"{'WarmAvg':>10}{'Max':>10}  Result   (ms)"
+        )
+        out.append("-" * 92)
+        for r in results:
+            name = r.label.split("›")[-1].strip() if "›" in r.label else r.label
+            res = "PASS" if r.passed else "FAIL"
+            out.append(
+                f"  {name[:33]:<34}{r.chart_count:>6}{r.cold_full_avg:>10.0f}"
+                f"{r.cold_full_max:>10.0f}{r.warm_full_avg:>10.0f}{r.max_time_ms:>10.0f}  {res}"
+            )
+            for cs in r.chart_stats:
+                out.append(
+                    f"      • {cs.name[:44]:<44} cold {cs.cold_avg_ms:>7.0f}  "
+                    f"warm {cs.warm_avg_ms:>7.0f}  max {cs.max_ms:>7.0f}"
+                )
+            if r.has_filter:
+                out.append(
+                    f"      ⟳ filter '{r.filter_name}': avg {r.filter_avg:.0f}ms "
+                    f"(threshold {r.filter_threshold:.0f}ms) → "
+                    f"{'PASS' if r.filter_passed else 'FAIL'}"
+                )
+        out.append("=" * 92)
+        print("\n".join(out))
 
     # ------------------------------------------------------------------
 
     def _generate_html(self) -> Path:
         rows = []
+        total_charts = 0
+        overall_max = 0.0
         for r in self.results:
-            iter_data = [
+            total_charts += r.chart_count
+            overall_max = max(overall_max, r.max_time_ms)
+
+            loads = [
                 {
-                    "iteration": it.iteration,
-                    "first_render_ms": it.first_render_ms,
-                    "interaction_ms": it.interaction_ms,
+                    "mode": lp.mode,
+                    "iteration": lp.iteration,
+                    "full_load_ms": lp.full_load_ms,
+                    "chart_count": lp.chart_count,
                 }
-                for it in r.iterations
+                for lp in r.loads
             ]
-            # Compute chart max for bar scaling
-            all_times = [it.first_render_ms for it in r.iterations if it.first_render_ms > 0]
-            all_times += [it.interaction_ms for it in r.iterations if it.interaction_ms > 0]
-            chart_max = max(all_times) if all_times else 1
+            chart_stats = [
+                {
+                    "name": cs.name,
+                    "cold_avg_ms": cs.cold_avg_ms,
+                    "warm_avg_ms": cs.warm_avg_ms,
+                    "max_ms": cs.max_ms,
+                }
+                for cs in r.chart_stats
+            ]
 
             rows.append({
                 "label": r.label,
                 "url": r.url,
                 "passed": r.passed,
-                "first_render_min": r.first_render_min,
-                "first_render_max": r.first_render_max,
-                "first_render_avg": r.first_render_avg,
-                "interaction_min": r.interaction_min,
-                "interaction_max": r.interaction_max,
-                "interaction_avg": r.interaction_avg,
-                "first_render_threshold": r.first_render_threshold,
-                "interaction_threshold": r.interaction_threshold,
-                "first_render_passed": r.first_render_passed,
-                "interaction_passed": r.interaction_passed,
-                "iterations": iter_data,
-                "chart_max": chart_max,
+                "cold_full_min": r.cold_full_min,
+                "cold_full_max": r.cold_full_max,
+                "cold_full_avg": r.cold_full_avg,
+                "warm_full_min": r.warm_full_min,
+                "warm_full_max": r.warm_full_max,
+                "warm_full_avg": r.warm_full_avg,
+                "cold_threshold": r.cold_threshold,
+                "cold_passed": r.cold_passed,
+                "has_filter": r.has_filter,
+                "filter_name": r.filter_name,
+                "filter_min": r.filter_min,
+                "filter_max": r.filter_max,
+                "filter_avg": r.filter_avg,
+                "filter_threshold": r.filter_threshold,
+                "filter_passed": r.filter_passed,
+                "chart_count": r.chart_count,
+                "max_time_ms": r.max_time_ms,
+                "chart_stats": chart_stats,
+                "loads": loads,
                 "screenshot_b64": _img_b64(r.screenshot_path),
             })
 
@@ -418,6 +548,8 @@ class PerformanceReporter:
             "total": len(rows),
             "passed": passed,
             "failed": len(rows) - passed,
+            "total_charts": total_charts,
+            "overall_max_ms": overall_max,
             "results": rows,
         }
 
@@ -429,6 +561,7 @@ class PerformanceReporter:
     # ------------------------------------------------------------------
 
     def _generate_csv(self) -> Path:
+        """Write a long-format CSV with full-load, per-chart and filter rows."""
         out = self.run_dir / "performance_results.csv"
         with open(out, "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
@@ -436,31 +569,50 @@ class PerformanceReporter:
                 "dashboard_label",
                 "dashboard_url",
                 "iteration",
-                "first_render_ms",
-                "interaction_ms",
-                "first_render_threshold_ms",
-                "interaction_threshold_ms",
-                "first_render_avg_ms",
-                "interaction_avg_ms",
-                "first_render_pass",
-                "interaction_pass",
-                "overall_pass",
+                "load_mode",
+                "metric_type",
+                "chart_name",
+                "value_ms",
+                "threshold_ms",
+                "pass",
             ])
             for r in self.results:
-                for it in r.iterations:
+                for lp in r.loads:
+                    is_cold = lp.mode == "cold"
                     writer.writerow([
                         r.label,
                         r.url,
-                        it.iteration,
-                        f"{it.first_render_ms:.0f}" if it.first_render_ms >= 0 else "ERROR",
-                        f"{it.interaction_ms:.0f}" if it.interaction_ms >= 0 else "ERROR",
-                        f"{r.first_render_threshold:.0f}",
-                        f"{r.interaction_threshold:.0f}",
-                        f"{r.first_render_avg:.0f}",
-                        f"{r.interaction_avg:.0f}",
-                        r.first_render_passed,
-                        r.interaction_passed,
-                        r.passed,
+                        lp.iteration,
+                        lp.mode,
+                        "full_dashboard_load",
+                        "",
+                        f"{lp.full_load_ms:.0f}",
+                        f"{r.cold_threshold:.0f}" if is_cold else "",
+                        (lp.full_load_ms <= r.cold_threshold) if is_cold else "",
+                    ])
+                    for c in lp.charts:
+                        writer.writerow([
+                            r.label,
+                            r.url,
+                            lp.iteration,
+                            lp.mode,
+                            "chart_load",
+                            c.name,
+                            f"{c.load_ms:.0f}",
+                            "",
+                            "" if c.rendered else "NOT_RENDERED",
+                        ])
+                for fr in r.filter_refreshes:
+                    writer.writerow([
+                        r.label,
+                        r.url,
+                        fr.iteration,
+                        "warm",
+                        "filter_refresh",
+                        fr.label,
+                        f"{fr.refresh_ms:.0f}",
+                        f"{r.filter_threshold:.0f}",
+                        fr.refresh_ms <= r.filter_threshold,
                     ])
         return out
 

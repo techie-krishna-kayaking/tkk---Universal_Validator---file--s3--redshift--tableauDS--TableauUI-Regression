@@ -1,7 +1,17 @@
 # ------------------------------------------------------------
-# PERFORMANCE MODE — Dashboard render & interaction timing
+# PERFORMANCE MODE — Dashboard load & interaction timing
 # ------------------------------------------------------------
 # test_type: "performance"   ← auto-detected from section name
+#
+# What it measures per dashboard (and per discovered view), for N iterations:
+#   • COLD load  — HTTP cache cleared/disabled first (uncached, worst case)
+#   • WARM load  — reloaded with cache populated (cached, best case)
+#   • Per-chart  — how long every individual chart/worksheet takes to render
+#   • Filter refresh — time to re-render after the configured filter/tab change
+# Results are written to report.html + performance_results.csv in the run folder.
+#
+# thresholds.first_render_ms → applies to the COLD full-dashboard load
+# thresholds.interaction_ms  → applies to the filter refresh
 #
 # Run:  python run.py --config config_performance.yaml
 # ------------------------------------------------------------
@@ -13,10 +23,6 @@ performance:
     - url: "https://prod-useast-b.online.tableau.com/#/site/infoblox/workbooks/4456901/views"
       label: "UAI Performance Dashboard_v1"
       test_all_views: true              # auto-discovers & tests all 4 views
-      interaction:
-        type: "filter"                # applied to each discovered view
-        filter_name: "Region"
-        filter_value: "Americas"
       thresholds:
         first_render_ms: 15000        # max 15 s to first render
         interaction_ms: 8000          # max 8 s for filter change

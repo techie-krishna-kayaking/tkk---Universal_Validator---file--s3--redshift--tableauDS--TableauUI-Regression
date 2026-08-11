@@ -3,9 +3,11 @@ config_parser.py — Load and validate the YAML config using Pydantic v2 models.
 
 Design decisions:
   - test_type is OPTIONAL — auto-detected from which section is present
-  - browser is OPTIONAL — defaults to the standard macOS Edge profile path
+  - browser is OPTIONAL — defaults to a dedicated automation Edge profile
   This allows minimal config files like test.yaml that only define the test section.
 """
+import os
+
 import yaml
 from pydantic import BaseModel, field_validator, model_validator
 from typing import List, Optional, Union
@@ -77,8 +79,10 @@ class PerformanceConfig(BaseModel):
 
 
 class BrowserConfig(BaseModel):
-    # Default: the standard macOS Edge profile location
-    user_data_dir: str = "/Users/kkrishna/Library/Application Support/Microsoft Edge"
+    # Dedicated automation profile — Playwright cannot attach to the managed
+    # default Edge profile, so we keep a separate profile that persists the
+    # Okta/Tableau session across runs (log in once, reused afterwards).
+    user_data_dir: str = os.path.expanduser("~/.tableau_perf_edge_profile")
     profile_dir: str = "Default"
     headless: bool = False
     page_load_timeout: int = 90000
@@ -89,7 +93,8 @@ class BrowserConfig(BaseModel):
 
 
 class OutputConfig(BaseModel):
-    base_dir: str = "results"
+    # Default: bi_regression/results (next to this package), independent of cwd
+    base_dir: str = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results")
 
 
 class TestConfig(BaseModel):
