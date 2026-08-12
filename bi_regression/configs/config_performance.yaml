@@ -20,12 +20,31 @@ performance:
   iterations: 3                       # repeat each dashboard N times
 
   dashboards:
-    - url: "https://prod-useast-b.online.tableau.com/#/site/infoblox/workbooks/4456901/views"
-      label: "UAI Performance Dashboard_v1"
+    - url: "https://prod-useast-b.online.tableau.com/#/site/infoblox/workbooks/4478073/views"
+      label: "Optimized UAT UAI Performance Dashboard_v1"
       test_all_views: true              # auto-discovers & tests all 4 views
       thresholds:
         first_render_ms: 15000        # max 15 s to first render
         interaction_ms: 8000          # max 8 s for filter change
+
+
+    - url: "https://prod-useast-b.online.tableau.com/#/site/infoblox/workbooks/4456901/views"
+      label: "Prod UAI Performance Dashboard_v1"
+      test_all_views: true
+      thresholds:
+        first_render_ms: 15000
+        interaction_ms: 8000
+
+
+# ------------------------------------------------------------
+  # dashboards:
+  #   - url: "https://prod-useast-b.online.tableau.com/#/site/infoblox/workbooks/4456901/views"
+  #     label: "UAI Performance Dashboard_v1"
+  #     test_all_views: true              # auto-discovers & tests all 4 views
+  #     thresholds:
+  #       first_render_ms: 15000        # max 15 s to first render
+  #       interaction_ms: 8000          # max 8 s for filter change
+
 
     # Add more dashboards as needed:
     # - url: "https://..."
