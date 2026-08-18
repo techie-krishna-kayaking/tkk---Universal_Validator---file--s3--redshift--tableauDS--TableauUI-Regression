@@ -407,14 +407,35 @@ class Comparator:
         return self._compare_with_pk()
     
     def _compare_without_pk(self) -> List[Dict[str, Any]]:
-        """Compare data row-by-row without primary keys."""
-        failures = []
-        min_len = min(len(self.source_df), len(self.target_df))
-        mismatch_count = 0
+        """Compare data row-by-row without primary keys.
         
+        Both dataframes are sorted by all common columns before comparison
+        so that row order differences don't cause false mismatches.
+        """
+        failures = []
+
+        # Sort both dataframes by all common columns so order differences don't
+        # produce false mismatches. Coerce to string for a stable, type-safe sort.
+        sort_cols = self.common_cols
+        source_sorted = (
+            self.source_df[sort_cols]
+            .astype(str)
+            .sort_values(by=sort_cols)
+            .reset_index(drop=True)
+        )
+        target_sorted = (
+            self.target_df[sort_cols]
+            .astype(str)
+            .sort_values(by=sort_cols)
+            .reset_index(drop=True)
+        )
+
+        min_len = min(len(source_sorted), len(target_sorted))
+        mismatch_count = 0
+
         for i in range(min_len):
-            row_source = self.source_df.iloc[i]
-            row_target = self.target_df.iloc[i]
+            row_source = source_sorted.iloc[i]
+            row_target = target_sorted.iloc[i]
             
             for col in self.common_cols:
                 val_source = row_source.get(col, np.nan)
@@ -451,7 +472,7 @@ class Comparator:
                 "result": "PASS",
                 "column": "",
                 "pk": "",
-                "detail": f"All {min_len} rows match across {len(self.common_cols)} common columns",
+                "detail": f"All {min_len} rows match across {len(self.common_cols)} common columns (sorted comparison)",
                 "source_value": "",
                 "target_value": ""
             })

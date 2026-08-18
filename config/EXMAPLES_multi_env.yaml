@@ -396,6 +396,137 @@ validations:
     output_dir: ./results
 
 
+validations:
+  - name: "Data Steward Data SourceValidation"
+    # Read ONLY the table rows whose primary keys exist in the source file,
+    # instead of loading the full 14M-row table. Validates exactly the source records.
+    filter_target_by_source_pks: true
+    source:
+      type: datasource
+      path: ./raw_data/DataStewardDataSource.tdsx
+    target:
+      type: table
+      environment: PREPROD
+      query: |
+        WITH usr AS (SELECT id
+                           ,geo owner_geo_cd
+                           ,region owner_region_name
+                           ,name owner_name
+                           ,edw_updt_dt
+                       FROM edw_asis.USER
+                      WHERE edw_act_fl = 'Y')
+
+          SELECT act.id account_id
+                ,act.name
+                ,act.account_number__c
+                ,act.approved_date__c
+                ,act.account_owner_name_text__c
+                ,act.rc_potential_sam__c
+                ,act.account_ranking_list__c
+                ,act.recordtypeid
+                ,act.account_segment__c
+                ,act.accountsource
+                ,act.account_status__c
+                ,act.ap_confidence_score__c
+                ,LOWER (act.archived_account__c) archived_account
+                ,a_se.owner_name assigned_se__c
+                ,act.assigned_territory__c
+                ,act.oss_validation__c
+                ,act.billingaddress
+                ,act.business_name__c
+                ,TRUNC (act.customer_since_date__c) customer_since_date
+                ,TRUNC (act.customer_until_date__c) customer_until_date
+                ,act.d_u_n_s_number__c
+                ,act.data_steward_validation__c
+                ,act.dba_name__c
+                ,act.denied_party_screening_status__c
+                ,LOWER (act.dnb_donotupdate__c) dnb_donotupdate
+                ,act.match_grade__c
+                ,act.dnb_updates__c
+                ,LOWER (act.donotupdate_employees__c) donotupdate_employees
+                ,act.donotupdate_industry__c
+                ,act.duns__c
+                ,act.numberofemployees
+                ,act.forbes_rank__c
+                ,act.fortune_rank__c
+                ,act.geo__c
+                ,act.global_ultimate_business_name__c
+                ,act.global_ultimate_d_u_n_s_number__c
+                ,act.industry
+                ,LOWER (act.is_distributor__c) is_distributor
+                ,LOWER (act.is_end_user__c) is_end_user
+                ,LOWER (act.is_reseller__c) is_reseller
+                ,LOWER (act.is_sp_si__c) is_sp_si
+                ,last_mod_owner.owner_name lastmodifiedbyowner
+                ,act.master_account__c
+                ,TRUNC (act.new_logo_since_date__c) new_logo_since_date
+                ,opp.opportunity_id
+                ,opp.opportunity_name
+                ,opp.expansion opportunity_sales_motion
+                ,ter.territory_name opportunity_territory_name
+                ,act.oracle_id__c
+                ,act.oss_asset_validation__c
+                ,act.parentid
+                ,act.parent_business_name__c
+                ,act.parent_d_u_n_s_number__c
+                ,act.partner_id__c
+                ,act.reseller_level__c partner_level
+                ,act.partner_type__c
+                ,act.physical_geo__c
+                ,act.physical_region__c
+                ,LOWER (act.preferred_partner__c) preferred_partner
+                ,act.rank_list_name__c
+                ,act.rcn_employee_count__c
+                ,act.rc_industry__c
+                ,act.reporting_company_potential_sam__c
+                ,act.region__c
+                ,CASE WHEN LENGTH(act.reporting_customer_name__c) > 1
+                      THEN act.reporting_customer_name__c
+                      ELSE act.name
+                  END reporting_customer_name
+                ,act.GU_DUNS__c
+                ,act.sales_company_id__c
+                ,act.sales_company_name__c
+                ,act.sales_designation__c
+                ,act.expansion__c
+                ,TRUNC (act.expansion_since_date__c) expansion_since_date__c
+                ,act.se_name__c
+                ,act.shippingaddress
+                ,LOWER (act.sp__c) sp_check_box
+                ,LOWER (act.sp__c) sp_flag
+                ,act.whitespace_driver__c
+                ,act."type"
+                ,act.uber_ultimate_industry__c
+                ,act.uber_ultimate_number__c
+                ,act.uber_ultimate_name__c
+                ,act.gu_employee_total__c uu_employee_total
+                ,act.gu_employee_total__c uu_total_employees
+                ,act.website
+                ,LOWER (act.winback__c) winback
+            FROM (SELECT *
+                    FROM edw_asis.salesforce_account
+                   WHERE edw_act_fl = 'Y'
+                     AND UPPER (isdeleted) <> 'TRUE') act
+                ,edw_asis.vw_obj_opportunity opp
+                ,usr last_mod_owner
+                ,usr a_se
+                ,(SELECT id territory_id
+                        ,geo__c territory_geo
+                        ,region__c territory_region
+                        ,UPPER (name) territory_name
+                    FROM edw_asis.salesforce_territory2
+                   WHERE edw_act_fl = 'Y') ter
+           WHERE act.id = opp.account_id(+)
+             AND act.lastmodifiedbyid = last_mod_owner.id(+)
+             AND act.assigned_se__c = a_se.id(+)
+             AND opp.territory_id = ter.territory_id(+)
+    primary_keys: id
+    output_dir: ./results/DataStewardDataSource
+
+
+# python3 main.py --config config/
+
+
 # ────────────────────────────────────────────────────────────────────────────
 # SECTION 7 — Running Multiple Validations Together
 # ────────────────────────────────────────────────────────────────────────────
