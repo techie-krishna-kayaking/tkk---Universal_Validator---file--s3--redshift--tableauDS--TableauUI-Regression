@@ -1,0 +1,67 @@
+validations:
+  - name: clari_entries
+    source:
+      type: file
+      path: ./raw_data/Clari/clari_entries-48c565197166465f895c64ad86d127a4.csv
+    target:
+      type: table
+      environment: PREPROD
+      schema: edw_stage
+      table: stg_clari_entries
+      where_clause: report_name = 'channel_new_logo'
+    primary_keys: []
+    output_dir: ./results/clari
+
+  - name: clari_users
+    source:
+      type: file
+      path: ./raw_data/Clari/clari_users-1e6b930516b544099dcf9c7de64da018.csv
+    target:
+      type: table
+      environment: PREPROD
+      schema: edw_stage
+      table: stg_clari_users
+      where_clause: report_name = 'channel_new_logo'
+    primary_keys: []
+    output_dir: ./results/clari
+
+  - name: clari_fields
+    source:
+      type: file
+      path: ./raw_data/Clari/clari_fields-1ad45e404e2344b7a4cf086342e58131.csv
+    target:
+      type: table
+      environment: PREPROD
+      schema: edw_stage
+      table: stg_clari_fields
+      where_clause: report_name = 'channel_new_logo'
+    primary_keys: []
+    output_dir: ./results/clari
+
+  - name: clari_timeperiods
+    source:
+      type: file
+      path: ./raw_data/Clari/clari_timeperiods-bb0b127c06824aa6954287b00be4a07d.csv
+    target:
+      type: table
+      environment: PREPROD
+      schema: edw_stage
+      table: stg_clari_timeperiods
+      where_clause: report_name = 'channel_new_logo'
+    primary_keys: []
+    output_dir: ./results/clari
+
+  - name: clari_timeframes
+    source:
+      type: file
+      path: ./raw_data/Clari/clari_timeframes-74e9e83735674ef884e1b7e309a2949e.csv
+    target:
+      type: table
+      environment: PREPROD
+      schema: edw_stage
+      table: stg_clari_timeframes
+      where_clause: report_name = 'channel_new_logo'
+    primary_keys: []
+    output_dir: ./results/clari
+
+# python3 main.py --config config/1clari.yaml
