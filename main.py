@@ -90,70 +90,69 @@ def _print_qa_summary(results: list, config_path: Path) -> None:
 
     lines = [
         "",
-        "=" * 80,
-        "  📋  QA SIGN-OFF",
-        "=" * 80,
-        f"  Tables Validated : {len(results)}",
-        f"  Validation Type  : File vs. Redshift Table (Pre-Prod)",
-        f"  Config File      : {config_path.name}",
-        f"  QA Status        : {qa_status}",
+        "## 📋 QA Sign-off",
+        "",
+        f"**Tables Validated:** {len(results)}",
+        f"**Validation Type:** File vs. Redshift Table (Pre-Prod)",
+        f"**Config File:** `{config_path.name}`",
+        f"**QA Status:** {qa_status}",
         "",
     ]
 
-    # --- validation table ---
-    col_w = [4, 36, 38, 8, 8]
-    header = (
-        f"  {'#':<{col_w[0]}}  {'Validation (Source File)':<{col_w[1]}}"
-        f"  {'Target Redshift Table':<{col_w[2]}}"
-        f"  {'Src Rows':>{col_w[3]}}  {'Tgt Rows':>{col_w[4]}}"
-    )
-    sep = "  " + "-" * (sum(col_w) + 2 * (len(col_w) - 1))
-    lines.append(header)
-    lines.append(sep)
-
+    # --- validation table (markdown pipe style — renders in Jira & Teams) ---
+    rows_data = []
     for i, r in enumerate(results, 1):
         name = r['name']
-        # derive target table from source_metadata if available, else use name
         tgt_meta = r.get('target_metadata', {})
         tgt_table = tgt_meta.get('table') or name
         src_rows, tgt_rows = row_counts.get(name, ('?', '?'))
-        status_icon = '✅' if r['status'] == 'PASS' else '❌'
-        lines.append(
-            f"  {i:<{col_w[0]}}  {name:<{col_w[1]}}"
-            f"  {tgt_table:<{col_w[2]}}"
-            f"  {str(src_rows):>{col_w[3]}}  {str(tgt_rows):>{col_w[4]}}  {status_icon}"
-        )
+        status_icon = '✅ PASS' if r['status'] == 'PASS' else '❌ FAIL'
+        rows_data.append((str(i), name, tgt_table, str(src_rows), str(tgt_rows), status_icon))
 
-    lines.append(sep)
+    headers = ('#', 'Validation (Source File)', 'Target Redshift Table', 'Src Rows', 'Tgt Rows', 'Status')
+    col_w = [
+        max(len(headers[j]), max(len(row[j]) for row in rows_data))
+        for j in range(len(headers))
+    ]
+
+    def _md_row(cells, widths):
+        parts = [f" {cell:<{widths[0]}} " if j == 0 else f" {cell:<{widths[j]}} "
+                 for j, cell in enumerate(cells)]
+        return "|" + "|".join(parts) + "|"
+
+    def _md_sep(widths):
+        return "|" + "|".join("-" * (w + 2) for w in widths) + "|"
+
+    lines.append(_md_row(headers, col_w))
+    lines.append(_md_sep(col_w))
+    for row in rows_data:
+        lines.append(_md_row(row, col_w))
     lines.append("")
 
     # --- non-blocking observations ---
     if fail_patterns:
-        # Classify patterns
         nb_patterns = []
         for (sv, tv), count in sorted(fail_patterns.items(), key=lambda x: -x[1]):
-            nb_patterns.append(f"    • {sv!r} vs {tv!r}  ({count} occurrence{'s' if count > 1 else ''})")
+            nb_patterns.append(f"- `{sv}` vs `{tv}`  ({count} occurrence{'s' if count > 1 else ''})")
 
         lines += [
-            "  ℹ️  Data Quality Observation — Non-blocking",
-            "  " + "-" * 60,
-            "  The observed differences are data representation / type differences:",
+            "### ℹ️ Data Quality Observation — Non-blocking",
+            "The observed differences are data representation / type differences:",
             "",
         ]
         lines += nb_patterns
         lines += [
             "",
-            "  These are non-blocking observations and do not indicate a business-value",
-            "  discrepancy based on the validations performed.",
+            "These are **non-blocking** observations and do not indicate a business-value discrepancy.",
             "",
-            f"  Status : ✅ QA Approved — Non-blocking observations noted.",
+            "**Status:** ✅ QA Approved — Non-blocking observations noted.",
             "",
         ]
     else:
-        lines.append("  ✅ No data mismatches detected.")
+        lines.append("✅ No data mismatches detected.")
         lines.append("")
 
-    lines.append("=" * 80)
+    lines.append("---")
     lines.append("")
 
     print("\n".join(lines))
